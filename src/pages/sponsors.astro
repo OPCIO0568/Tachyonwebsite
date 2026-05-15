@@ -1,0 +1,87 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import fallbackSponsorsData from "../../data/sponsors.json";
+---
+
+<BaseLayout title="스폰서" description="Tachyon을 후원하는 기업 및 기관">
+  <section class="section">
+    <div class="container" id="sponsors-app">
+      <h1 class="section-title">Sponsors</h1>
+      <p>스폰서 정보를 불러오는 중입니다.</p>
+    </div>
+  </section>
+
+  <script define:vars={{ fallbackSponsorsData }}>
+    const app = document.getElementById("sponsors-app");
+
+    const escapeHtml = (value) =>
+      String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+    const normalizeSponsors = (data) => ({
+      title: data?.title || "Sponsors",
+      description: data?.description || "",
+      heroImage: data?.heroImage || "",
+      items: Array.isArray(data?.items) ? data.items : [],
+    });
+
+    const sponsorCard = (sponsor) => {
+      const hasLogo = Boolean(sponsor.logo);
+      const className = hasLogo ? "logo-card has-image" : "logo-card no-image";
+      const href = sponsor.url || "#";
+      const image = hasLogo
+        ? `<img src="${escapeHtml(sponsor.logo)}" alt="${escapeHtml(sponsor.name)}">`
+        : "";
+
+      return `
+        <a class="${className}" href="${escapeHtml(href)}">
+          ${image}
+          <span class="logo-name">${escapeHtml(sponsor.name)}</span>
+        </a>
+      `;
+    };
+
+    const render = (data) => {
+      const sponsors = normalizeSponsors(data);
+      const hero = sponsors.heroImage
+        ? `
+          <div class="sponsors-hero">
+            <img src="${escapeHtml(sponsors.heroImage)}" alt="Sponsors">
+          </div>
+        `
+        : "";
+
+      app.innerHTML = `
+        <h1 class="section-title">${escapeHtml(sponsors.title)}</h1>
+        <p>${escapeHtml(sponsors.description)}</p>
+        ${hero}
+        <div class="logo-grid">${sponsors.items.map(sponsorCard).join("")}</div>
+      `;
+    };
+
+    const loadSponsors = async () => {
+      try {
+        const response = await fetch("/api/sponsors", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("Failed to load sponsors");
+        }
+        return await response.json();
+      } catch {
+        return fallbackSponsorsData;
+      }
+    };
+
+    loadSponsors()
+      .then(render)
+      .catch(() => {
+        app.innerHTML = `
+          <h1 class="section-title">Sponsors</h1>
+          <p>스폰서 정보를 표시하지 못했습니다. 데이터 형식을 확인해주세요.</p>
+        `;
+      });
+  </script>
+</BaseLayout>

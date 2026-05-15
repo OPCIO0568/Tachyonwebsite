@@ -1,0 +1,50 @@
+[
+  {
+    "name": "Members",
+    "route": "/members",
+    "file": "data/members.json",
+    "editor": "members"
+  },
+  {
+    "name": "Home",
+    "route": "/",
+    "file": "data/home.json",
+    "editor": "home"
+  },
+  {
+    "name": "Home EN",
+    "route": "/en",
+    "file": "data/home-en.json",
+    "editor": "home-en"
+  },
+  {
+    "name": "About US",
+    "route": "/intro",
+    "file": "data/intro.json",
+    "editor": "intro"
+  },
+  {
+    "name": "About US EN",
+    "route": "/en/intro",
+    "file": "data/intro-en.json",
+    "editor": "intro-en"
+  },
+  {
+    "name": "Our Cars",
+    "route": "/history",
+    "file": "data/history.json",
+    "editor": "history"
+  },
+  {
+    "name": "Sponsors",
+    "route": "/sponsors",
+    "file": "data/sponsors.json",
+    "editor": "sponsors"
+  },
+  {
+    "name": "Contact US",
+    "route": "/contact",
+    "file": "data/contact.json",
+    "editor": "contact"
+  }
+]

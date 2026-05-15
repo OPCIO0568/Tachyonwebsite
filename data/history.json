@@ -1,0 +1,252 @@
+{
+  "title": "Our Cars",
+  "description": "역대 차량과 수상 내역",
+  "vehicleSectionTitle": "History",
+  "groups": [
+    {
+      "title": "TF Series",
+      "vehicles": [
+        {
+          "name": "TF-25",
+          "year": "2025",
+          "competition": "Formula SAE",
+          "award": "Formula SAE",
+          "image": "/images/vehicles/TF25.jpg",
+          "alt": "TF-25"
+        },
+        {
+          "name": "RTF-1",
+          "year": "2024",
+          "competition": "Formula SAE",
+          "award": "Formula SAE",
+          "image": "/images/vehicles/RTF-1.png",
+          "alt": "RTF-1"
+        },
+        {
+          "name": "TF-2",
+          "year": "2010",
+          "competition": "Formula SAE",
+          "award": "",
+          "image": "/images/vehicles/TF2.jpg",
+          "alt": "TF-2"
+        },
+        {
+          "name": "TF-1",
+          "year": "2006",
+          "competition": "Formula SAE",
+          "award": "",
+          "image": "/images/vehicles/TF1.jpg",
+          "alt": "TF-1"
+        }
+      ]
+    },
+    {
+      "title": "TE Series",
+      "vehicles": [
+        {
+          "name": "TE-7",
+          "year": "2024",
+          "competition": "Formula Student Korea",
+          "award": "",
+          "image": "/images/vehicles/TE-7.jpg",
+          "alt": "TE-7"
+        },
+        {
+          "name": "TE-6",
+          "year": "2023",
+          "competition": "Formula Student Korea",
+          "award": "",
+          "image": "/images/vehicles/TE-6.jpg",
+          "alt": "TE-6"
+        },
+        {
+          "name": "TE-5",
+          "year": "2022",
+          "competition": "Formula Student Korea",
+          "award": "",
+          "image": "/images/vehicles/TE-5.jpg",
+          "alt": "TE-5"
+        },
+        {
+          "name": "TE-3L",
+          "year": "2021",
+          "competition": "Formula Student Korea",
+          "award": "",
+          "image": "/images/vehicles/TE-3L.jpg",
+          "alt": "TE-3"
+        },
+        {
+          "name": "TE-3",
+          "year": "2020",
+          "competition": "Formula Student Korea",
+          "award": "",
+          "image": "/images/vehicles/TE-3.JPG",
+          "alt": "TE-3"
+        }
+      ]
+    },
+    {
+      "title": "T Series",
+      "vehicles": [
+        {
+          "name": "T-8",
+          "year": "2005",
+          "competition": "KSAE Formula",
+          "award": "",
+          "image": "/images/vehicles/T8.jpg",
+          "alt": "T-8"
+        },
+        {
+          "name": "T-7",
+          "year": "2004",
+          "competition": "KSAE Formula",
+          "award": "",
+          "image": "/images/vehicles/T7.jpg",
+          "alt": "T-7"
+        },
+        {
+          "name": "T-6",
+          "year": "2003",
+          "competition": "KSAE Formula",
+          "award": "",
+          "image": "/images/vehicles/T6.bmp",
+          "alt": "T-6"
+        },
+        {
+          "name": "T-5",
+          "year": "2002",
+          "competition": "KSAE Formula",
+          "award": "",
+          "image": "/images/vehicles/T5.jpg",
+          "alt": "T-5"
+        },
+        {
+          "name": "T-4",
+          "year": "2001",
+          "competition": "KSAE Formula",
+          "award": "",
+          "image": "/images/vehicles/T4.jpg",
+          "alt": "T-4"
+        },
+        {
+          "name": "T-3",
+          "year": "2000",
+          "competition": "KSAE Formula",
+          "award": "",
+          "image": "/images/vehicles/T3.jpg",
+          "alt": "T-3"
+        },
+        {
+          "name": "T-2",
+          "year": "1999",
+          "competition": "KSAE Formula",
+          "award": "",
+          "image": "/images/vehicles/T2.jpg",
+          "alt": "T-2"
+        },
+        {
+          "name": "T-1",
+          "year": "1998",
+          "competition": "KSAE Formula",
+          "award": "",
+          "image": "/images/vehicles/T1.jpg",
+          "alt": "T-1"
+        }
+      ]
+    },
+    {
+      "title": "TM Series",
+      "vehicles": [
+        {
+          "name": "TM-3",
+          "year": "2013",
+          "competition": "KSAE EV",
+          "award": "",
+          "image": "/images/vehicles/TM3.jpg",
+          "alt": "TM-3"
+        },
+        {
+          "name": "TM-2",
+          "year": "2012",
+          "competition": "KSAE EV",
+          "award": "",
+          "image": "/images/vehicles/TM2.jpg",
+          "alt": "TM-2"
+        },
+        {
+          "name": "TM-1",
+          "year": "2011",
+          "competition": "KSAE EV",
+          "award": "",
+          "image": "/images/vehicles/TM1.jpg",
+          "alt": "TM-1"
+        }
+      ]
+    }
+  ],
+  "awards": {
+    "title": "역대 수상 내역",
+    "items": [
+      {
+        "year": "2025",
+        "competition": "Formula Student Korea (FSK)",
+        "vehicle": "TF-25",
+        "result": "에너지 효율 우수상 (Energy Efficiency Award)"
+      },
+      {
+        "year": "2025",
+        "competition": "스마트 e-모빌리티 경진대회",
+        "vehicle": "TE-6",
+        "result": "장려상 (Encouragement Award)"
+      },
+      {
+        "year": "2024",
+        "competition": "Formula Student Korea (C-Formula)",
+        "vehicle": "RTF-1",
+        "result": "종합 9위(장려상)"
+      },
+      {
+        "year": "2024",
+        "competition": "스마트 e-모빌리티 경진대회",
+        "vehicle": "TE-5",
+        "result": "5위(동상)"
+      },
+      {
+        "year": "2023",
+        "competition": "스마트 e-모빌리티 경진대회",
+        "vehicle": "TE-5",
+        "result": "종합 12위(장려상)"
+      },
+      {
+        "year": "2023",
+        "competition": "스마트 e-모빌리티 경진대회",
+        "vehicle": "TE-3L",
+        "result": "종합 9위(장려상)"
+      },
+      {
+        "year": "2014",
+        "competition": "K-SAE Formula",
+        "vehicle": "T-8",
+        "result": "장려상 (Encouragement Award)"
+      },
+      {
+        "year": "2012",
+        "competition": "K-SAE Formula",
+        "vehicle": "TF-2",
+        "result": "금상 (Gold Prize)"
+      },
+      {
+        "year": "2010",
+        "competition": "Formula SAE",
+        "vehicle": "TF-2",
+        "result": "종합 20위 (20th Overall)"
+      },
+      {
+        "year": "2006",
+        "competition": "Formula SAE",
+        "vehicle": "TF-1",
+        "result": "베스트 루키상 (Best Rookie Award)"
+      }
+    ]
+  }
+}

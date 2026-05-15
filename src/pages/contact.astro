@@ -1,0 +1,99 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import fallbackContactData from "../../data/contact.json";
+---
+
+<BaseLayout title="Contact Us" description="Tachyon 연락처와 소셜 링크">
+  <section class="section">
+    <div class="container" id="contact-app">
+      <h1 class="section-title">Contact Us</h1>
+      <p>연락처 정보를 불러오는 중입니다.</p>
+    </div>
+  </section>
+
+  <script define:vars={{ fallbackContactData }}>
+    const app = document.getElementById("contact-app");
+
+    const escapeHtml = (value) =>
+      String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+    const normalizeContact = (data) => ({
+      title: data?.title || "Contact Us",
+      subtitle: data?.subtitle || "",
+      heroImage: data?.heroImage || "",
+      contacts: Array.isArray(data?.contacts) ? data.contacts : [],
+      socials: Array.isArray(data?.socials) ? data.socials : [],
+    });
+
+    const contactCard = (contact) => {
+      const phone = contact.phone
+        ? `<p class="contact-info-detail">${escapeHtml(contact.phone)}</p>`
+        : "";
+      const email = contact.email
+        ? `<p class="contact-info-detail"><a href="mailto:${escapeHtml(contact.email)}">${escapeHtml(contact.email)}</a></p>`
+        : "";
+
+      return `
+        <div class="contact-info-card">
+          <h3>${escapeHtml(contact.role)}</h3>
+          <p class="contact-info-name">${escapeHtml(contact.name)}</p>
+          ${phone}
+          ${email}
+        </div>
+      `;
+    };
+
+    const socialCard = (social) => `
+      <a class="contact-social-card" href="${escapeHtml(social.url || "#")}">
+        ${social.image ? `<img src="${escapeHtml(social.image)}" alt="${escapeHtml(social.name)}">` : ""}
+        <span>${escapeHtml(social.name)}</span>
+      </a>
+    `;
+
+    const render = (data) => {
+      const contact = normalizeContact(data);
+      const subtitle = contact.subtitle ? `<p class="section-subtitle">${escapeHtml(contact.subtitle)}</p>` : "";
+      const hero = contact.heroImage
+        ? `
+          <div class="contact-hero">
+            <img src="${escapeHtml(contact.heroImage)}" alt="Tachyon Team">
+          </div>
+        `
+        : "";
+
+      app.innerHTML = `
+        <h1 class="section-title">${escapeHtml(contact.title)}</h1>
+        ${subtitle}
+        ${hero}
+        <div class="contact-info-grid">${contact.contacts.map(contactCard).join("")}</div>
+        <div class="contact-social-grid">${contact.socials.map(socialCard).join("")}</div>
+      `;
+    };
+
+    const loadContact = async () => {
+      try {
+        const response = await fetch("/api/contact", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("Failed to load contact");
+        }
+        return await response.json();
+      } catch {
+        return fallbackContactData;
+      }
+    };
+
+    loadContact()
+      .then(render)
+      .catch(() => {
+        app.innerHTML = `
+          <h1 class="section-title">Contact Us</h1>
+          <p>연락처 정보를 표시하지 못했습니다. 데이터 형식을 확인해주세요.</p>
+        `;
+      });
+  </script>
+</BaseLayout>

@@ -1,0 +1,246 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import fallbackMembersData from "../../../data/members.json";
+---
+
+<BaseLayout title="Members" description="Tachyon 멤버 소개">
+  <section class="section">
+    <div class="container">
+      <div id="members-app" class="members-app">
+        <h1 class="section-title">Members</h1>
+        <p class="section-subtitle">멤버 정보를 불러오는 중입니다.</p>
+      </div>
+    </div>
+  </section>
+
+  <script define:vars={{ fallbackMembersData }}>
+    const app = document.getElementById("members-app");
+    const fallbackPhoto = "/images/profile/unprofile.jpg";
+
+    const escapeHtml = (value) =>
+      String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+    const normalizeEmail = (email) => String(email ?? "").trim();
+
+    const sortSeasons = (seasons) =>
+      [...(seasons ?? [])].sort((a, b) => Number(b.year) - Number(a.year));
+
+    const getInitialView = (data) => {
+      const params = new URLSearchParams(window.location.search);
+      const pathMatch = window.location.pathname.match(/^\/members\/([^/]+)\/?$/);
+      const pathView = pathMatch?.[1];
+      const year = pathView || params.get("year");
+
+      if (year && data.seasons?.some((season) => season.year === year)) {
+        return { type: "season", year };
+      }
+      if (pathView === "archive" || params.get("view") === "archive") {
+        return { type: "archive" };
+      }
+      if (pathView === "ob" || params.get("view") === "ob") {
+        return { type: "ob" };
+      }
+      return { type: "season", year: sortSeasons(data.seasons)[0]?.year };
+    };
+
+    const renderTabs = (data, active) => {
+      const seasonTabs = sortSeasons(data.seasons)
+        .map((season) => {
+          const activeClass = active.type === "season" && active.year === season.year ? " is-active" : "";
+          return `<button class="member-tab${activeClass}" type="button" data-year="${escapeHtml(season.year)}">${escapeHtml(season.year)}</button>`;
+        })
+        .join("");
+
+      const archiveClass = active.type === "archive" ? " is-active" : "";
+      const obClass = active.type === "ob" ? " is-active" : "";
+
+      return `
+        <div class="member-tabs" role="tablist">
+          ${seasonTabs}
+          <button class="member-tab${archiveClass}" type="button" data-view="archive">Archive</button>
+          <button class="member-tab${obClass}" type="button" data-view="ob">OB</button>
+        </div>
+      `;
+    };
+
+    const renderTeamPhotos = (photos, alt) => {
+      if (!photos?.length) {
+        return "";
+      }
+
+      return photos
+        .map(
+          (photo) => `
+            <div class="member-hero">
+              <img class="member-hero-photo" src="${escapeHtml(photo)}" alt="${escapeHtml(alt)}">
+            </div>
+          `,
+        )
+        .join("");
+    };
+
+    const renderMember = (member) => {
+      const email = normalizeEmail(member.email);
+      const emailLink = email
+        ? `<a class="member-link" href="mailto:${escapeHtml(email)}">Email</a>`
+        : "";
+
+      return `
+        <article class="member-card">
+          <img class="member-photo" src="${escapeHtml(member.photo || fallbackPhoto)}" alt="${escapeHtml(member.name || member.role || "Member")}">
+          <h3 class="member-name">${escapeHtml(member.name || "이름 입력")}</h3>
+          <p class="member-role">${escapeHtml(member.role || "")}</p>
+          ${emailLink}
+        </article>
+      `;
+    };
+
+    const renderSections = (sections) => {
+      if (!sections?.length) {
+        return "";
+      }
+
+      return sections
+        .map((section) => {
+          const groups = (section.groups ?? [])
+            .map((group) => {
+              const title = group.title
+                ? `<h3 class="member-subtitle">${escapeHtml(group.title)}</h3>`
+                : "";
+              const members = (group.members ?? []).map(renderMember).join("");
+              return `
+                ${title}
+                <div class="member-grid">${members}</div>
+              `;
+            })
+            .join("");
+
+          return `
+            <div class="member-section">
+              <h2 class="member-section-title">${escapeHtml(section.title)}</h2>
+              ${groups}
+            </div>
+          `;
+        })
+        .join("");
+    };
+
+    const renderSeason = (data, year) => {
+      const season = data.seasons?.find((item) => item.year === year) ?? sortSeasons(data.seasons)[0];
+      if (!season) {
+        return `
+          <h1 class="section-title">Members</h1>
+          <p class="section-subtitle">등록된 시즌이 없습니다.</p>
+        `;
+      }
+
+      return `
+        <h1 class="section-title">${escapeHtml(season.title || `Members ${season.year}`)}</h1>
+        <p class="section-subtitle">${escapeHtml(season.subtitle || "")}</p>
+        ${renderTabs(data, { type: "season", year: season.year })}
+        ${renderTeamPhotos(season.teamPhotos, `Tachyon Team ${season.year}`)}
+        ${renderSections(season.sections)}
+      `;
+    };
+
+    const renderArchive = (data) => {
+      const groups = data.archive?.groups ?? [];
+      const archiveGroups = groups
+        .map(
+          (group) => `
+            <h2 class="member-section-title">${escapeHtml(group.label)}</h2>
+            ${renderTeamPhotos(group.photos, `Tachyon Team ${group.label}`)}
+          `,
+        )
+        .join("");
+
+      return `
+        <h1 class="section-title">${escapeHtml(data.archive?.title || "Members Archive")}</h1>
+        <p class="section-subtitle">${escapeHtml(data.archive?.subtitle || "")}</p>
+        ${renderTabs(data, { type: "archive" })}
+        ${archiveGroups}
+      `;
+    };
+
+    const renderOb = (data) => `
+      <h1 class="section-title">${escapeHtml(data.ob?.title || "OB Members")}</h1>
+      <p class="section-subtitle">${escapeHtml(data.ob?.subtitle || "")}</p>
+      ${renderTabs(data, { type: "ob" })}
+      ${renderTeamPhotos(data.ob?.teamPhotos, "Tachyon OB Team")}
+      <div class="member-grid">${(data.ob?.members ?? []).map(renderMember).join("")}</div>
+    `;
+
+    const render = (data, view) => {
+      if (view.type === "archive") {
+        app.innerHTML = renderArchive(data);
+      } else if (view.type === "ob") {
+        app.innerHTML = renderOb(data);
+      } else {
+        app.innerHTML = renderSeason(data, view.year);
+      }
+    };
+
+    const setUrl = (view) => {
+      const url = new URL(window.location.href);
+      url.search = "";
+      if (view.type === "season" && view.year) {
+        url.pathname = `/members/${view.year}`;
+      } else if (view.type === "archive" || view.type === "ob") {
+        url.pathname = `/members/${view.type}`;
+      } else {
+        url.pathname = "/members";
+      }
+      window.history.pushState(view, "", url);
+    };
+
+    const loadMembersData = async () => {
+      try {
+        const response = await fetch("/api/members", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("Failed to load members");
+        }
+        return await response.json();
+      } catch {
+        return fallbackMembersData;
+      }
+    };
+
+    const init = async () => {
+      try {
+        const data = await loadMembersData();
+        let active = getInitialView(data);
+        render(data, active);
+
+        app.addEventListener("click", (event) => {
+          const tab = event.target.closest(".member-tab");
+          if (!tab) {
+            return;
+          }
+
+          active = tab.dataset.year
+            ? { type: "season", year: tab.dataset.year }
+            : { type: tab.dataset.view };
+          render(data, active);
+          setUrl(active);
+        });
+
+        window.addEventListener("popstate", () => {
+          active = getInitialView(data);
+          render(data, active);
+        });
+      } catch {
+        app.innerHTML = `
+          <h1 class="section-title">Members</h1>
+          <p class="section-subtitle">멤버 정보를 표시하지 못했습니다. 데이터 형식을 확인해주세요.</p>
+        `;
+      }
+    };
+
+    init();
+  </script>
+</BaseLayout>

@@ -1,0 +1,2278 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Tachyon Admin" description="Tachyon 관리자 페이지">
+  <section class="section">
+    <div class="container">
+      <h1 class="section-title">Admin</h1>
+
+      <div id="admin-login" class="admin-panel">
+        <form id="login-form" class="admin-form">
+          <label class="admin-field">
+            <span>비밀번호</span>
+            <input id="admin-password" type="password" autocomplete="current-password" required />
+          </label>
+          <button class="admin-button admin-button-primary" type="submit">로그인</button>
+        </form>
+      </div>
+
+      <p id="admin-status" class="admin-status" aria-live="polite"></p>
+
+      <div id="admin-pages" class="admin-shell" hidden>
+        <div class="admin-toolbar">
+          <h2 class="admin-heading">Pages</h2>
+          <button class="admin-button" type="button" data-action="logout">로그아웃</button>
+        </div>
+
+        <div id="admin-page-grid" class="admin-page-grid"></div>
+
+        <form id="admin-password-form" class="admin-subpanel admin-password-form">
+          <div class="admin-subpanel-header">
+            <h3>비밀번호 변경</h3>
+          </div>
+          <div class="admin-form-grid">
+            <label class="admin-field">
+              <span>현재 비밀번호</span>
+              <input id="current-password" type="password" autocomplete="current-password" required />
+            </label>
+            <label class="admin-field">
+              <span>새 비밀번호</span>
+              <input id="new-password" type="password" autocomplete="new-password" minlength="8" required />
+            </label>
+            <label class="admin-field">
+              <span>새 비밀번호 확인</span>
+              <input id="confirm-password" type="password" autocomplete="new-password" minlength="8" required />
+            </label>
+          </div>
+          <div>
+            <button class="admin-button admin-button-primary" type="submit">비밀번호 변경</button>
+          </div>
+        </form>
+
+        <div class="admin-subpanel admin-visit-panel">
+          <div class="admin-subpanel-header">
+            <h3>조회수 통계</h3>
+            <label class="admin-field admin-field-inline">
+              <span>페이지</span>
+              <select id="admin-visit-page-select"></select>
+            </label>
+          </div>
+          <div id="admin-visit-summary" class="admin-visit-summary"></div>
+          <div id="admin-visit-chart" class="admin-visit-chart"></div>
+        </div>
+      </div>
+
+      <div id="admin-editor" class="admin-shell" hidden>
+        <div class="admin-toolbar">
+          <button class="admin-button" type="button" data-action="back-pages">페이지 목록</button>
+          <h2 id="admin-editor-title" class="admin-heading">Members</h2>
+          <label id="members-item-field" class="admin-field admin-field-inline">
+            <span>항목</span>
+            <select id="season-select"></select>
+          </label>
+          <button id="add-season-button" class="admin-button" type="button" data-action="add-season">시즌 추가</button>
+          <button class="admin-button admin-button-primary" type="button" data-action="save">저장</button>
+          <button class="admin-button" type="button" data-action="logout">로그아웃</button>
+        </div>
+
+        <div id="season-editor"></div>
+      </div>
+    </div>
+  </section>
+
+  <script is:inline>
+    const loginPanel = document.getElementById("admin-login");
+    const loginForm = document.getElementById("login-form");
+    const passwordInput = document.getElementById("admin-password");
+    const adminPages = document.getElementById("admin-pages");
+    const adminVisitSummary = document.getElementById("admin-visit-summary");
+    const adminVisitPageSelect = document.getElementById("admin-visit-page-select");
+    const adminVisitChart = document.getElementById("admin-visit-chart");
+    const adminPageGrid = document.getElementById("admin-page-grid");
+    const adminPasswordForm = document.getElementById("admin-password-form");
+    const currentPasswordInput = document.getElementById("current-password");
+    const newPasswordInput = document.getElementById("new-password");
+    const confirmPasswordInput = document.getElementById("confirm-password");
+    const adminEditor = document.getElementById("admin-editor");
+    const adminEditorTitle = document.getElementById("admin-editor-title");
+    const membersItemField = document.getElementById("members-item-field");
+    const addSeasonButton = document.getElementById("add-season-button");
+    const seasonSelect = document.getElementById("season-select");
+    const seasonEditor = document.getElementById("season-editor");
+    const statusEl = document.getElementById("admin-status");
+
+    let membersData = null;
+    let homeData = null;
+    let introData = null;
+    let historyData = null;
+    let sponsorsData = null;
+    let contactData = null;
+    let visitsData = { total: 0, pages: {}, days: {}, updatedAt: "" };
+    let sitePages = [];
+    let activeEditor = "";
+    let selectedYear = "";
+    let selectedVisitRoute = "all";
+
+    const defaultPhoto = "/images/profile/unprofile.jpg";
+
+    const escapeHtml = (value) =>
+      String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+    const setStatus = (message, type = "") => {
+      statusEl.textContent = message;
+      statusEl.dataset.type = type;
+    };
+
+    const requestJson = async (url, options = {}) => {
+      const response = await fetch(url, {
+        credentials: "same-origin",
+        ...options,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || "요청을 처리하지 못했습니다.");
+      }
+      return data;
+    };
+
+    const normalizeMember = (member = {}) => ({
+      name: member.name || "",
+      role: member.role || "",
+      email: member.email || "",
+      photo: member.photo || defaultPhoto,
+    });
+
+    const normalizeGroup = (group = {}) => ({
+      title: group.title || "",
+      members: Array.isArray(group.members) ? group.members.map(normalizeMember) : [],
+    });
+
+    const normalizeSection = (section = {}) => ({
+      title: section.title || "",
+      groups: Array.isArray(section.groups) ? section.groups.map(normalizeGroup) : [],
+    });
+
+    const normalizeSeason = (season = {}) => ({
+      year: String(season.year || ""),
+      title: season.title || "",
+      subtitle: season.subtitle || "",
+      teamPhotos: Array.isArray(season.teamPhotos) ? season.teamPhotos : [],
+      sections: Array.isArray(season.sections) ? season.sections.map(normalizeSection) : [],
+    });
+
+    const normalizeArchive = (archive = {}) => ({
+      title: archive.title || "Members Archive",
+      subtitle: archive.subtitle || "",
+      groups: Array.isArray(archive.groups)
+        ? archive.groups.map((group) => ({
+            label: group.label || "",
+            photos: Array.isArray(group.photos) ? group.photos : [],
+          }))
+        : [],
+    });
+
+    const normalizeOb = (ob = {}) => ({
+      title: ob.title || "OB Members",
+      subtitle: ob.subtitle || "",
+      teamPhotos: Array.isArray(ob.teamPhotos) ? ob.teamPhotos : [],
+      members: Array.isArray(ob.members) ? ob.members.map(normalizeMember) : [],
+    });
+
+    const normalizeData = (data = {}) => ({
+      seasons: Array.isArray(data.seasons) ? data.seasons.map(normalizeSeason) : [],
+      archive: normalizeArchive(data.archive),
+      ob: normalizeOb(data.ob),
+    });
+
+    const normalizePage = (page = {}) => ({
+      name: page.name || "",
+      route: page.route || "",
+      file: page.file || "",
+      editor: page.editor || "",
+    });
+
+    const normalizeHomeCard = (card = {}) => ({
+      label: card.label || "",
+      href: card.href || "",
+      image: card.image || "",
+      alt: card.alt || "",
+    });
+
+    const normalizeHomePhoto = (photo = {}) => ({
+      href: photo.href || "",
+      image: photo.image || "",
+      alt: photo.alt || "",
+    });
+
+    const normalizeHomeLink = (link = {}) => ({
+      label: link.label || "",
+      href: link.href || "",
+    });
+
+    const normalizeHomeData = (data = {}) => ({
+      title: data.title || "Tachyon",
+      description: data.description || "",
+      hero: {
+        lightImage: data.hero?.lightImage || "",
+        darkImage: data.hero?.darkImage || "",
+        alt: data.hero?.alt || "",
+        title: data.hero?.title || "",
+        lead: data.hero?.lead || "",
+      },
+      cards: Array.isArray(data.cards) ? data.cards.map(normalizeHomeCard) : [],
+      contact: {
+        title: data.contact?.title || "With US",
+        photos: Array.isArray(data.contact?.photos) ? data.contact.photos.map(normalizeHomePhoto) : [],
+        links: Array.isArray(data.contact?.links) ? data.contact.links.map(normalizeHomeLink) : [],
+      },
+    });
+
+    const normalizeIntroSection = (section = {}) => ({
+      heading: section.heading || "",
+      paragraphs: Array.isArray(section.paragraphs) ? section.paragraphs : [],
+    });
+
+    const normalizeIntroData = (data = {}) => ({
+      title: data.title || "동아리 소개",
+      description: data.description || "",
+      sections: Array.isArray(data.sections) ? data.sections.map(normalizeIntroSection) : [],
+      organization: {
+        title: data.organization?.title || "Organization",
+        image: data.organization?.image || "",
+        alt: data.organization?.alt || "",
+      },
+    });
+
+    const normalizeHistoryVehicle = (vehicle = {}) => ({
+      name: vehicle.name || "",
+      year: vehicle.year || "",
+      competition: vehicle.competition || "",
+      award: vehicle.award || "",
+      image: vehicle.image || "",
+      alt: vehicle.alt || "",
+    });
+
+    const normalizeHistoryGroup = (group = {}) => ({
+      title: group.title || "",
+      vehicles: Array.isArray(group.vehicles) ? group.vehicles.map(normalizeHistoryVehicle) : [],
+    });
+
+    const normalizeHistoryAward = (award = {}) => ({
+      year: award.year || "",
+      competition: award.competition || "",
+      vehicle: award.vehicle || "",
+      result: award.result || "",
+    });
+
+    const normalizeHistoryData = (data = {}) => ({
+      title: data.title || "Our Cars",
+      description: data.description || "",
+      vehicleSectionTitle: data.vehicleSectionTitle || "History",
+      groups: Array.isArray(data.groups) ? data.groups.map(normalizeHistoryGroup) : [],
+      awards: {
+        title: data.awards?.title || "역대 수상 내역",
+        items: Array.isArray(data.awards?.items) ? data.awards.items.map(normalizeHistoryAward) : [],
+      },
+    });
+
+    const normalizeSponsor = (sponsor = {}) => ({
+      name: sponsor.name || "",
+      url: sponsor.url || "",
+      logo: sponsor.logo || "",
+    });
+
+    const normalizeSponsorsData = (data = {}) => ({
+      title: data.title || "Sponsors",
+      description: data.description || "",
+      heroImage: data.heroImage || "",
+      items: Array.isArray(data.items) ? data.items.map(normalizeSponsor) : [],
+    });
+
+    const normalizeContactPerson = (person = {}) => ({
+      role: person.role || "",
+      name: person.name || "",
+      phone: person.phone || "",
+      email: person.email || "",
+    });
+
+    const normalizeContactSocial = (social = {}) => ({
+      name: social.name || "",
+      url: social.url || "",
+      image: social.image || "",
+    });
+
+    const normalizeContactData = (data = {}) => ({
+      title: data.title || "Contact Us",
+      subtitle: data.subtitle || "",
+      heroImage: data.heroImage || "",
+      contacts: Array.isArray(data.contacts) ? data.contacts.map(normalizeContactPerson) : [],
+      socials: Array.isArray(data.socials) ? data.socials.map(normalizeContactSocial) : [],
+    });
+
+    const normalizeVisitsData = (data = {}) => ({
+      total: Number(data.total) || 0,
+      pages: data.pages && typeof data.pages === "object" ? data.pages : {},
+      days: data.days && typeof data.days === "object" ? data.days : {},
+      updatedAt: data.updatedAt || "",
+    });
+
+    const formatCount = (value) => (Number(value) || 0).toLocaleString("ko-KR");
+
+    const pageVisitCountFrom = (pages, route) => {
+      if (route === "all") {
+        return Object.values(pages).reduce((sum, count) => sum + (Number(count) || 0), 0);
+      }
+      if (route === "/members") {
+        return Object.entries(pages).reduce(
+          (sum, [path, count]) => sum + (path === "/members" || path.startsWith("/members/") ? Number(count) || 0 : 0),
+          0,
+        );
+      }
+      return Number(pages[route]) || 0;
+    };
+
+    const pageVisitCount = (route) => {
+      if (route === "all") {
+        return Number(visitsData.total) || pageVisitCountFrom(visitsData.pages, "all");
+      }
+      return pageVisitCountFrom(visitsData.pages, route);
+    };
+
+    const visitDayKey = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+
+    const recentVisitDays = () => {
+      const today = new Date();
+      const dayMs = 24 * 60 * 60 * 1000;
+      return Array.from({ length: 7 }, (_, index) => {
+        const date = new Date(today.getTime() - (6 - index) * dayMs);
+        return {
+          key: visitDayKey(date),
+          label: `${date.getMonth() + 1}/${date.getDate()}`,
+        };
+      });
+    };
+
+    const selectedVisitLabel = () => {
+      if (selectedVisitRoute === "all") {
+        return "전체 페이지";
+      }
+      return sitePages.find((page) => page.route === selectedVisitRoute)?.name || selectedVisitRoute;
+    };
+
+    const visitSeries = () =>
+      recentVisitDays().map((day) => {
+        const dayData = visitsData.days[day.key] || { total: 0, pages: {} };
+        const count = selectedVisitRoute === "all" ? Number(dayData.total) || 0 : pageVisitCountFrom(dayData.pages || {}, selectedVisitRoute);
+        return { ...day, count };
+      });
+
+    const renderVisitChart = () => {
+      const series = visitSeries();
+      const weekTotal = series.reduce((sum, day) => sum + day.count, 0);
+      const maxCount = Math.max(1, ...series.map((day) => day.count));
+      const total = pageVisitCount(selectedVisitRoute);
+      const updated = visitsData.updatedAt ? new Date(visitsData.updatedAt).toLocaleString("ko-KR") : "기록 없음";
+      const label = selectedVisitLabel();
+
+      adminVisitSummary.innerHTML = `
+        <span>${escapeHtml(label)} 총 조회수 <strong>${formatCount(total)}</strong></span>
+        <span>최근 7일 <strong>${formatCount(weekTotal)}</strong></span>
+        <span>최근 기록 ${escapeHtml(updated)}</span>
+      `;
+
+      adminVisitChart.innerHTML = series
+        .map(
+          (day) => `
+            <div class="admin-visit-bar-row">
+              <span class="admin-visit-day">${escapeHtml(day.label)}</span>
+              <span class="admin-visit-bar-track">
+                <span class="admin-visit-bar-fill" style="width: ${(day.count / maxCount) * 100}%"></span>
+              </span>
+              <span class="admin-visit-count">${formatCount(day.count)}</span>
+            </div>
+          `,
+        )
+        .join("");
+    };
+
+    const renderVisitPageSelect = () => {
+      const routes = new Set(sitePages.map((page) => page.route));
+      if (selectedVisitRoute !== "all" && !routes.has(selectedVisitRoute)) {
+        selectedVisitRoute = "all";
+      }
+
+      adminVisitPageSelect.innerHTML = `
+        <option value="all" ${selectedVisitRoute === "all" ? "selected" : ""}>전체 페이지</option>
+        ${sitePages
+          .map(
+            (page) => `
+              <option value="${escapeHtml(page.route)}" ${selectedVisitRoute === page.route ? "selected" : ""}>
+                ${escapeHtml(page.name)} (${escapeHtml(page.route)})
+              </option>
+            `,
+          )
+          .join("")}
+      `;
+    };
+
+    const setEditorChrome = (editor) => {
+      activeEditor = editor;
+      const isMembers = editor === "members";
+      const titles = {
+        members: "Members",
+        home: "Home",
+        "home-en": "Home EN",
+        intro: "About US",
+        "intro-en": "About US EN",
+        history: "Our Cars",
+        sponsors: "Sponsors",
+        contact: "Contact US",
+      };
+      adminEditorTitle.textContent = titles[editor] || "Editor";
+      membersItemField.hidden = !isMembers;
+      addSeasonButton.hidden = !isMembers;
+    };
+
+    const renderPageList = () => {
+      renderVisitPageSelect();
+      renderVisitChart();
+      adminPageGrid.innerHTML = sitePages
+        .map((page) => {
+          const editableClass = page.editor ? " is-editable" : "";
+          const action = page.editor ? ` data-action="open-editor" data-editor="${escapeHtml(page.editor)}"` : "";
+          const tag = page.editor ? "button" : "div";
+          const type = page.editor ? ' type="button"' : "";
+          const visits = pageVisitCount(page.route);
+
+          return `
+            <${tag} class="admin-page-card${editableClass}"${type}${action}>
+              <span class="admin-page-name">${escapeHtml(page.name)}</span>
+              <span class="admin-page-route">${escapeHtml(page.route)}</span>
+              <span class="admin-page-visits">조회수 ${formatCount(visits)}</span>
+              <span class="admin-page-file">${escapeHtml(page.file)}</span>
+            </${tag}>
+          `;
+        })
+        .join("");
+    };
+
+    const sortSeasons = () =>
+      membersData.seasons.sort((a, b) => Number(b.year) - Number(a.year));
+
+    const selectedKind = () => {
+      if (selectedYear === "archive" || selectedYear === "ob") {
+        return selectedYear;
+      }
+      return "season";
+    };
+
+    const selectedUploadBucket = () =>
+      selectedYear.startsWith("season:") ? selectedYear.slice("season:".length) : selectedYear || "general";
+
+    const currentSeason = () => {
+      if (selectedKind() !== "season") {
+        return null;
+      }
+
+      const selectedSeasonYear = selectedUploadBucket();
+      const season = membersData.seasons.find((item) => item.year === selectedSeasonYear) || membersData.seasons[0];
+      selectedYear = season ? `season:${season.year}` : "";
+      return season;
+    };
+
+    const nextSeasonYear = () => {
+      const years = membersData.seasons.map((season) => Number(season.year)).filter(Number.isFinite);
+      return String((years.length ? Math.max(...years) : new Date().getFullYear()) + 1);
+    };
+
+    const renderSeasonOptions = () => {
+      sortSeasons();
+      const seasonOptions = membersData.seasons
+        .map(
+          (season) => `
+            <option value="season:${escapeHtml(season.year)}" ${selectedYear === `season:${season.year}` ? "selected" : ""}>
+              ${escapeHtml(season.year)}
+            </option>
+          `,
+        )
+        .join("");
+
+      seasonSelect.innerHTML = `
+        ${seasonOptions}
+        <option value="archive" ${selectedYear === "archive" ? "selected" : ""}>Archive</option>
+        <option value="ob" ${selectedYear === "ob" ? "selected" : ""}>OB</option>
+      `;
+    };
+
+    const renderPhotoRows = (season) => {
+      const rows = season.teamPhotos
+        .map(
+          (photo, index) => `
+            <div class="admin-photo-row" data-team-photo>
+              <input name="team-photo" value="${escapeHtml(photo)}" placeholder="/uploads/members/${escapeHtml(season.year)}/team.jpg" />
+              <input type="file" accept="image/*" data-action="upload-team-photo" data-photo-index="${index}" />
+              <button class="admin-icon-button" type="button" data-action="remove-team-photo" data-photo-index="${index}">삭제</button>
+            </div>
+          `,
+        )
+        .join("");
+
+      return `
+        <div class="admin-subpanel">
+          <div class="admin-subpanel-header">
+            <h3>대표 사진</h3>
+            <button class="admin-button" type="button" data-action="add-team-photo">사진 추가</button>
+          </div>
+          <div class="admin-stack">${rows || '<p class="admin-empty">등록된 대표 사진이 없습니다.</p>'}</div>
+        </div>
+      `;
+    };
+
+    const renderMemberRows = (members, sectionIndex, groupIndex) =>
+      members
+        .map(
+          (member, memberIndex) => `
+            <div class="admin-member-row" data-member>
+              <input name="member-name" value="${escapeHtml(member.name)}" placeholder="이름" />
+              <input name="member-role" value="${escapeHtml(member.role)}" placeholder="역할" />
+              <input name="member-email" value="${escapeHtml(member.email)}" placeholder="email@example.com" />
+              <input name="member-photo" value="${escapeHtml(member.photo)}" placeholder="/uploads/members/${escapeHtml(selectedUploadBucket())}/profile.jpg" />
+              <input type="file" accept="image/*" data-action="upload-member-photo" data-section-index="${sectionIndex}" data-group-index="${groupIndex}" data-member-index="${memberIndex}" />
+              <button class="admin-icon-button" type="button" data-action="move-member-up" data-section-index="${sectionIndex}" data-group-index="${groupIndex}" data-member-index="${memberIndex}">위</button>
+              <button class="admin-icon-button" type="button" data-action="move-member-down" data-section-index="${sectionIndex}" data-group-index="${groupIndex}" data-member-index="${memberIndex}">아래</button>
+              <button class="admin-icon-button" type="button" data-action="remove-member" data-section-index="${sectionIndex}" data-group-index="${groupIndex}" data-member-index="${memberIndex}">삭제</button>
+            </div>
+          `,
+        )
+        .join("");
+
+    const renderGroups = (section, sectionIndex) =>
+      section.groups
+        .map(
+          (group, groupIndex) => `
+            <div class="admin-group-block" data-group>
+              <div class="admin-subpanel-header">
+                <label class="admin-field">
+                  <span>그룹명</span>
+                  <input name="group-title" value="${escapeHtml(group.title)}" placeholder="Aero Body" />
+                </label>
+                <div class="admin-row-actions">
+                  <button class="admin-icon-button" type="button" data-action="move-group-up" data-section-index="${sectionIndex}" data-group-index="${groupIndex}">위</button>
+                  <button class="admin-icon-button" type="button" data-action="move-group-down" data-section-index="${sectionIndex}" data-group-index="${groupIndex}">아래</button>
+                  <button class="admin-icon-button" type="button" data-action="remove-group" data-section-index="${sectionIndex}" data-group-index="${groupIndex}">삭제</button>
+                </div>
+              </div>
+              <div class="admin-member-list" data-members>
+                ${renderMemberRows(group.members, sectionIndex, groupIndex) || '<p class="admin-empty">등록된 멤버가 없습니다.</p>'}
+              </div>
+              <button class="admin-button" type="button" data-action="add-member" data-section-index="${sectionIndex}" data-group-index="${groupIndex}">멤버 추가</button>
+            </div>
+          `,
+        )
+        .join("");
+
+    const renderSections = (season) =>
+      season.sections
+        .map(
+          (section, sectionIndex) => `
+            <div class="admin-section-block" data-section>
+              <div class="admin-subpanel-header">
+                <label class="admin-field">
+                  <span>섹션명</span>
+                  <input name="section-title" value="${escapeHtml(section.title)}" placeholder="Leadership" />
+                </label>
+                <div class="admin-row-actions">
+                  <button class="admin-icon-button" type="button" data-action="move-section-up" data-section-index="${sectionIndex}">위</button>
+                  <button class="admin-icon-button" type="button" data-action="move-section-down" data-section-index="${sectionIndex}">아래</button>
+                  <button class="admin-icon-button" type="button" data-action="remove-section" data-section-index="${sectionIndex}">삭제</button>
+                </div>
+              </div>
+              <div class="admin-groups" data-groups>${renderGroups(section, sectionIndex)}</div>
+              <button class="admin-button" type="button" data-action="add-group" data-section-index="${sectionIndex}">그룹 추가</button>
+            </div>
+          `,
+        )
+        .join("");
+
+    const renderObMemberRows = (members) =>
+      members
+        .map(
+          (member, memberIndex) => `
+            <div class="admin-member-row" data-ob-member>
+              <input name="ob-member-name" value="${escapeHtml(member.name)}" placeholder="이름" />
+              <input name="ob-member-role" value="${escapeHtml(member.role)}" placeholder="역할" />
+              <input name="ob-member-email" value="${escapeHtml(member.email)}" placeholder="email@example.com" />
+              <input name="ob-member-photo" value="${escapeHtml(member.photo)}" placeholder="/uploads/members/ob/profile.jpg" />
+              <input type="file" accept="image/*" data-action="upload-ob-member-photo" data-member-index="${memberIndex}" />
+              <button class="admin-icon-button" type="button" data-action="move-ob-member-up" data-member-index="${memberIndex}">위</button>
+              <button class="admin-icon-button" type="button" data-action="move-ob-member-down" data-member-index="${memberIndex}">아래</button>
+              <button class="admin-icon-button" type="button" data-action="remove-ob-member" data-member-index="${memberIndex}">삭제</button>
+            </div>
+          `,
+        )
+        .join("");
+
+    const renderObEditor = () => `
+      <div class="admin-panel" data-ob-form>
+        <div class="admin-form-grid">
+          <label class="admin-field">
+            <span>제목</span>
+            <input name="ob-title" value="${escapeHtml(membersData.ob.title)}" placeholder="OB Members" />
+          </label>
+          <label class="admin-field admin-field-wide">
+            <span>설명</span>
+            <input name="ob-subtitle" value="${escapeHtml(membersData.ob.subtitle)}" placeholder="OB" />
+          </label>
+        </div>
+
+        ${renderPhotoRows({ teamPhotos: membersData.ob.teamPhotos, year: "ob" })}
+
+        <div class="admin-subpanel">
+          <div class="admin-subpanel-header">
+            <h3>OB 멤버</h3>
+            <button class="admin-button" type="button" data-action="add-ob-member">멤버 추가</button>
+          </div>
+          <div class="admin-member-list">
+            ${renderObMemberRows(membersData.ob.members) || '<p class="admin-empty">등록된 OB 멤버가 없습니다.</p>'}
+          </div>
+        </div>
+      </div>
+    `;
+
+    const renderArchivePhotoRows = (photos, groupIndex) =>
+      photos
+        .map(
+          (photo, photoIndex) => `
+            <div class="admin-photo-row" data-archive-photo>
+              <input name="archive-photo" value="${escapeHtml(photo)}" placeholder="/uploads/members/archive/photo.jpg" />
+              <input type="file" accept="image/*" data-action="upload-archive-photo" data-group-index="${groupIndex}" data-photo-index="${photoIndex}" />
+              <button class="admin-icon-button" type="button" data-action="remove-archive-photo" data-group-index="${groupIndex}" data-photo-index="${photoIndex}">삭제</button>
+            </div>
+          `,
+        )
+        .join("");
+
+    const renderArchiveGroups = () =>
+      membersData.archive.groups
+        .map(
+          (group, groupIndex) => `
+            <div class="admin-group-block" data-archive-group>
+              <div class="admin-subpanel-header">
+                <label class="admin-field">
+                  <span>그룹명</span>
+                  <input name="archive-group-label" value="${escapeHtml(group.label)}" placeholder="2023" />
+                </label>
+                <div class="admin-row-actions">
+                  <button class="admin-icon-button" type="button" data-action="move-archive-group-up" data-group-index="${groupIndex}">위</button>
+                  <button class="admin-icon-button" type="button" data-action="move-archive-group-down" data-group-index="${groupIndex}">아래</button>
+                  <button class="admin-icon-button" type="button" data-action="remove-archive-group" data-group-index="${groupIndex}">삭제</button>
+                </div>
+              </div>
+              <div class="admin-stack">
+                ${renderArchivePhotoRows(group.photos, groupIndex) || '<p class="admin-empty">등록된 사진이 없습니다.</p>'}
+              </div>
+              <button class="admin-button" type="button" data-action="add-archive-photo" data-group-index="${groupIndex}">사진 추가</button>
+            </div>
+          `,
+        )
+        .join("");
+
+    const renderArchiveEditor = () => `
+      <div class="admin-panel" data-archive-form>
+        <div class="admin-form-grid">
+          <label class="admin-field">
+            <span>제목</span>
+            <input name="archive-title" value="${escapeHtml(membersData.archive.title)}" placeholder="Members Archive" />
+          </label>
+          <label class="admin-field admin-field-wide">
+            <span>설명</span>
+            <input name="archive-subtitle" value="${escapeHtml(membersData.archive.subtitle)}" placeholder="2022-2023 team photos." />
+          </label>
+        </div>
+
+        <div class="admin-subpanel">
+          <div class="admin-subpanel-header">
+            <h3>Archive 그룹</h3>
+            <button class="admin-button" type="button" data-action="add-archive-group">그룹 추가</button>
+          </div>
+          <div class="admin-stack">
+            ${renderArchiveGroups() || '<p class="admin-empty">등록된 Archive 그룹이 없습니다.</p>'}
+          </div>
+        </div>
+      </div>
+    `;
+
+    const renderHomeCardRows = () =>
+      homeData.cards
+        .map(
+          (card, cardIndex) => `
+            <div class="admin-home-row" data-home-card>
+              <input name="home-card-label" value="${escapeHtml(card.label)}" placeholder="About US" />
+              <input name="home-card-href" value="${escapeHtml(card.href)}" placeholder="/intro" />
+              <input name="home-card-image" value="${escapeHtml(card.image)}" placeholder="/uploads/home/cards/image.jpg" />
+              <input name="home-card-alt" value="${escapeHtml(card.alt)}" placeholder="이미지 설명" />
+              <input type="file" accept="image/*" data-action="upload-home-card" data-card-index="${cardIndex}" />
+              <button class="admin-icon-button" type="button" data-action="move-home-card-up" data-card-index="${cardIndex}">위</button>
+              <button class="admin-icon-button" type="button" data-action="move-home-card-down" data-card-index="${cardIndex}">아래</button>
+              <button class="admin-icon-button" type="button" data-action="remove-home-card" data-card-index="${cardIndex}">삭제</button>
+            </div>
+          `,
+        )
+        .join("");
+
+    const renderHomePhotoRows = () =>
+      homeData.contact.photos
+        .map(
+          (photo, photoIndex) => `
+            <div class="admin-home-row" data-home-photo>
+              <input name="home-photo-href" value="${escapeHtml(photo.href)}" placeholder="https://example.com" />
+              <input name="home-photo-image" value="${escapeHtml(photo.image)}" placeholder="/uploads/home/contact/image.jpg" />
+              <input name="home-photo-alt" value="${escapeHtml(photo.alt)}" placeholder="이미지 설명" />
+              <input type="file" accept="image/*" data-action="upload-home-photo" data-photo-index="${photoIndex}" />
+              <button class="admin-icon-button" type="button" data-action="move-home-photo-up" data-photo-index="${photoIndex}">위</button>
+              <button class="admin-icon-button" type="button" data-action="move-home-photo-down" data-photo-index="${photoIndex}">아래</button>
+              <button class="admin-icon-button" type="button" data-action="remove-home-photo" data-photo-index="${photoIndex}">삭제</button>
+            </div>
+          `,
+        )
+        .join("");
+
+    const renderHomeLinkRows = () =>
+      homeData.contact.links
+        .map(
+          (link, linkIndex) => `
+            <div class="admin-home-link-row" data-home-link>
+              <input name="home-link-label" value="${escapeHtml(link.label)}" placeholder="Instagram" />
+              <input name="home-link-href" value="${escapeHtml(link.href)}" placeholder="https://example.com" />
+              <button class="admin-icon-button" type="button" data-action="move-home-link-up" data-link-index="${linkIndex}">위</button>
+              <button class="admin-icon-button" type="button" data-action="move-home-link-down" data-link-index="${linkIndex}">아래</button>
+              <button class="admin-icon-button" type="button" data-action="remove-home-link" data-link-index="${linkIndex}">삭제</button>
+            </div>
+          `,
+        )
+        .join("");
+
+    const renderHomeEditor = () => {
+      seasonEditor.innerHTML = `
+        <div class="admin-panel" data-home-form>
+          <div class="admin-form-grid">
+            <label class="admin-field">
+              <span>페이지 제목</span>
+              <input name="home-title" value="${escapeHtml(homeData.title)}" placeholder="Tachyon" />
+            </label>
+            <label class="admin-field admin-field-wide">
+              <span>페이지 설명</span>
+              <input name="home-description" value="${escapeHtml(homeData.description)}" placeholder="검색/브라우저 설명" />
+            </label>
+            <label class="admin-field">
+              <span>히어로 이미지 설명</span>
+              <input name="home-hero-alt" value="${escapeHtml(homeData.hero.alt)}" placeholder="Tachyon Banner" />
+            </label>
+          </div>
+
+          <div class="admin-form-grid">
+            <label class="admin-field">
+              <span>밝은 이미지</span>
+              <input name="home-hero-light" value="${escapeHtml(homeData.hero.lightImage)}" placeholder="/uploads/home/hero/image.jpg" />
+            </label>
+            <label class="admin-field">
+              <span>어두운 이미지</span>
+              <input name="home-hero-dark" value="${escapeHtml(homeData.hero.darkImage)}" placeholder="/uploads/home/hero/image-dark.jpg" />
+            </label>
+            <label class="admin-field">
+              <span>히어로 제목</span>
+              <input name="home-hero-title" value="${escapeHtml(homeData.hero.title)}" placeholder="충북대학교 자작 자동차 동아리, TACHYON" />
+            </label>
+          </div>
+
+          <label class="admin-field admin-field-wide">
+            <span>히어로 설명</span>
+            <textarea name="home-hero-lead" rows="4" placeholder="홈 상단 설명">${escapeHtml(homeData.hero.lead)}</textarea>
+          </label>
+
+          <div class="admin-subpanel">
+            <div class="admin-subpanel-header">
+              <h3>히어로 이미지 업로드</h3>
+            </div>
+            <div class="admin-row-actions">
+              <input type="file" accept="image/*" data-action="upload-home-hero-light" />
+              <input type="file" accept="image/*" data-action="upload-home-hero-dark" />
+            </div>
+          </div>
+
+          <div class="admin-subpanel">
+            <div class="admin-subpanel-header">
+              <h3>카드</h3>
+              <button class="admin-button" type="button" data-action="add-home-card">카드 추가</button>
+            </div>
+            <div class="admin-stack">
+              ${renderHomeCardRows() || '<p class="admin-empty">등록된 카드가 없습니다.</p>'}
+            </div>
+          </div>
+
+          <div class="admin-subpanel">
+            <div class="admin-subpanel-header">
+              <h3>With US</h3>
+              <label class="admin-field admin-field-inline">
+                <span>제목</span>
+                <input name="home-contact-title" value="${escapeHtml(homeData.contact.title)}" placeholder="With US" />
+              </label>
+            </div>
+            <div class="admin-stack">
+              ${renderHomePhotoRows() || '<p class="admin-empty">등록된 사진 링크가 없습니다.</p>'}
+            </div>
+            <button class="admin-button" type="button" data-action="add-home-photo">사진 링크 추가</button>
+          </div>
+
+          <div class="admin-subpanel">
+            <div class="admin-subpanel-header">
+              <h3>With US 버튼</h3>
+              <button class="admin-button" type="button" data-action="add-home-link">버튼 추가</button>
+            </div>
+            <div class="admin-stack">
+              ${renderHomeLinkRows() || '<p class="admin-empty">등록된 버튼이 없습니다.</p>'}
+            </div>
+          </div>
+        </div>
+      `;
+    };
+
+    const renderIntroSections = () =>
+      introData.sections
+        .map(
+          (section, sectionIndex) => `
+            <div class="admin-section-block" data-intro-section>
+              <div class="admin-subpanel-header">
+                <label class="admin-field admin-field-wide">
+                  <span>섹션 제목</span>
+                  <input name="intro-section-heading" value="${escapeHtml(section.heading)}" placeholder="Introduce" />
+                </label>
+                <div class="admin-row-actions">
+                  <button class="admin-icon-button" type="button" data-action="move-intro-section-up" data-section-index="${sectionIndex}">위</button>
+                  <button class="admin-icon-button" type="button" data-action="move-intro-section-down" data-section-index="${sectionIndex}">아래</button>
+                  <button class="admin-icon-button" type="button" data-action="remove-intro-section" data-section-index="${sectionIndex}">삭제</button>
+                </div>
+              </div>
+              <label class="admin-field admin-field-wide">
+                <span>본문</span>
+                <textarea name="intro-section-body" rows="6" placeholder="문단을 빈 줄로 구분해서 입력">${escapeHtml(section.paragraphs.join("\n\n"))}</textarea>
+              </label>
+            </div>
+          `,
+        )
+        .join("");
+
+    const renderIntroEditor = () => {
+      seasonEditor.innerHTML = `
+        <div class="admin-panel" data-intro-form>
+          <div class="admin-form-grid">
+            <label class="admin-field">
+              <span>페이지 제목</span>
+              <input name="intro-title" value="${escapeHtml(introData.title)}" placeholder="동아리 소개" />
+            </label>
+            <label class="admin-field admin-field-wide">
+              <span>페이지 설명</span>
+              <input name="intro-description" value="${escapeHtml(introData.description)}" placeholder="동아리 소개 및 수상 내역" />
+            </label>
+            <label class="admin-field">
+              <span>조직도 제목</span>
+              <input name="intro-org-title" value="${escapeHtml(introData.organization.title)}" placeholder="Organization" />
+            </label>
+          </div>
+
+          <div class="admin-form-grid">
+            <label class="admin-field">
+              <span>조직도 이미지</span>
+              <input name="intro-org-image" value="${escapeHtml(introData.organization.image)}" placeholder="/uploads/intro/organization/image.jpg" />
+            </label>
+            <label class="admin-field admin-field-wide">
+              <span>조직도 이미지 설명</span>
+              <input name="intro-org-alt" value="${escapeHtml(introData.organization.alt)}" placeholder="Team Organization Chart" />
+            </label>
+          </div>
+
+          <div class="admin-subpanel">
+            <div class="admin-subpanel-header">
+              <h3>조직도 이미지 업로드</h3>
+            </div>
+            <input type="file" accept="image/*" data-action="upload-intro-organization" />
+          </div>
+
+          <div class="admin-subpanel">
+            <div class="admin-subpanel-header">
+              <h3>소개 섹션</h3>
+              <button class="admin-button" type="button" data-action="add-intro-section">섹션 추가</button>
+            </div>
+            <div class="admin-stack">
+              ${renderIntroSections() || '<p class="admin-empty">등록된 소개 섹션이 없습니다.</p>'}
+            </div>
+          </div>
+        </div>
+      `;
+    };
+
+    const renderHistoryVehicleRows = (vehicles, groupIndex) =>
+      vehicles
+        .map(
+          (vehicle, vehicleIndex) => `
+            <div class="admin-history-vehicle-row" data-history-vehicle>
+              <input name="history-vehicle-name" value="${escapeHtml(vehicle.name)}" placeholder="TF-25" />
+              <input name="history-vehicle-year" value="${escapeHtml(vehicle.year)}" placeholder="2025" />
+              <input name="history-vehicle-competition" value="${escapeHtml(vehicle.competition)}" placeholder="Formula Student Korea" />
+              <input name="history-vehicle-award" value="${escapeHtml(vehicle.award)}" placeholder="수상 내역" />
+              <input name="history-vehicle-image" value="${escapeHtml(vehicle.image)}" placeholder="/uploads/history/vehicles/image.jpg" />
+              <input name="history-vehicle-alt" value="${escapeHtml(vehicle.alt)}" placeholder="이미지 설명" />
+              <input type="file" accept="image/*" data-action="upload-history-vehicle" data-group-index="${groupIndex}" data-vehicle-index="${vehicleIndex}" />
+              <button class="admin-icon-button" type="button" data-action="move-history-vehicle-up" data-group-index="${groupIndex}" data-vehicle-index="${vehicleIndex}">위</button>
+              <button class="admin-icon-button" type="button" data-action="move-history-vehicle-down" data-group-index="${groupIndex}" data-vehicle-index="${vehicleIndex}">아래</button>
+              <button class="admin-icon-button" type="button" data-action="remove-history-vehicle" data-group-index="${groupIndex}" data-vehicle-index="${vehicleIndex}">삭제</button>
+            </div>
+          `,
+        )
+        .join("");
+
+    const renderHistoryGroups = () =>
+      historyData.groups
+        .map(
+          (group, groupIndex) => `
+            <div class="admin-section-block" data-history-group>
+              <div class="admin-subpanel-header">
+                <label class="admin-field admin-field-wide">
+                  <span>시리즈 이름</span>
+                  <input name="history-group-title" value="${escapeHtml(group.title)}" placeholder="TF Series" />
+                </label>
+                <div class="admin-row-actions">
+                  <button class="admin-icon-button" type="button" data-action="move-history-group-up" data-group-index="${groupIndex}">위</button>
+                  <button class="admin-icon-button" type="button" data-action="move-history-group-down" data-group-index="${groupIndex}">아래</button>
+                  <button class="admin-icon-button" type="button" data-action="remove-history-group" data-group-index="${groupIndex}">삭제</button>
+                </div>
+              </div>
+              <div class="admin-stack">
+                ${renderHistoryVehicleRows(group.vehicles, groupIndex) || '<p class="admin-empty">등록된 차량이 없습니다.</p>'}
+              </div>
+              <button class="admin-button" type="button" data-action="add-history-vehicle" data-group-index="${groupIndex}">차량 추가</button>
+            </div>
+          `,
+        )
+        .join("");
+
+    const renderHistoryAwardRows = () =>
+      historyData.awards.items
+        .map(
+          (award, awardIndex) => `
+            <div class="admin-history-award-row" data-history-award>
+              <input name="history-award-year" value="${escapeHtml(award.year)}" placeholder="2025" />
+              <input name="history-award-competition" value="${escapeHtml(award.competition)}" placeholder="대회명" />
+              <input name="history-award-vehicle" value="${escapeHtml(award.vehicle)}" placeholder="차량명" />
+              <input name="history-award-result" value="${escapeHtml(award.result)}" placeholder="성과" />
+              <button class="admin-icon-button" type="button" data-action="move-history-award-up" data-award-index="${awardIndex}">위</button>
+              <button class="admin-icon-button" type="button" data-action="move-history-award-down" data-award-index="${awardIndex}">아래</button>
+              <button class="admin-icon-button" type="button" data-action="remove-history-award" data-award-index="${awardIndex}">삭제</button>
+            </div>
+          `,
+        )
+        .join("");
+
+    const renderHistoryEditor = () => {
+      seasonEditor.innerHTML = `
+        <div class="admin-panel" data-history-form>
+          <div class="admin-form-grid">
+            <label class="admin-field">
+              <span>페이지 제목</span>
+              <input name="history-title" value="${escapeHtml(historyData.title)}" placeholder="Our Cars" />
+            </label>
+            <label class="admin-field admin-field-wide">
+              <span>페이지 설명</span>
+              <input name="history-description" value="${escapeHtml(historyData.description)}" placeholder="역대 차량과 수상 내역" />
+            </label>
+            <label class="admin-field">
+              <span>차량 섹션 제목</span>
+              <input name="history-vehicle-section-title" value="${escapeHtml(historyData.vehicleSectionTitle)}" placeholder="History" />
+            </label>
+          </div>
+
+          <div class="admin-subpanel">
+            <div class="admin-subpanel-header">
+              <h3>차량 시리즈</h3>
+              <button class="admin-button" type="button" data-action="add-history-group">시리즈 추가</button>
+            </div>
+            <div class="admin-stack">
+              ${renderHistoryGroups() || '<p class="admin-empty">등록된 차량 시리즈가 없습니다.</p>'}
+            </div>
+          </div>
+
+          <div class="admin-subpanel">
+            <div class="admin-subpanel-header">
+              <h3>수상 내역</h3>
+              <label class="admin-field admin-field-inline">
+                <span>제목</span>
+                <input name="history-awards-title" value="${escapeHtml(historyData.awards.title)}" placeholder="역대 수상 내역" />
+              </label>
+              <button class="admin-button" type="button" data-action="add-history-award">수상 추가</button>
+            </div>
+            <div class="admin-stack">
+              ${renderHistoryAwardRows() || '<p class="admin-empty">등록된 수상 내역이 없습니다.</p>'}
+            </div>
+          </div>
+        </div>
+      `;
+    };
+
+    const renderSponsorRows = () =>
+      sponsorsData.items
+        .map(
+          (sponsor, sponsorIndex) => `
+            <div class="admin-sponsor-row" data-sponsor>
+              <input name="sponsor-name" value="${escapeHtml(sponsor.name)}" placeholder="스폰서 이름" />
+              <input name="sponsor-url" value="${escapeHtml(sponsor.url)}" placeholder="https://example.com" />
+              <input name="sponsor-logo" value="${escapeHtml(sponsor.logo)}" placeholder="/uploads/sponsors/logos/logo.png" />
+              <input type="file" accept="image/*" data-action="upload-sponsor-logo" data-sponsor-index="${sponsorIndex}" />
+              <button class="admin-icon-button" type="button" data-action="move-sponsor-up" data-sponsor-index="${sponsorIndex}">위</button>
+              <button class="admin-icon-button" type="button" data-action="move-sponsor-down" data-sponsor-index="${sponsorIndex}">아래</button>
+              <button class="admin-icon-button" type="button" data-action="remove-sponsor" data-sponsor-index="${sponsorIndex}">삭제</button>
+            </div>
+          `,
+        )
+        .join("");
+
+    const renderSponsorsEditor = () => {
+      seasonEditor.innerHTML = `
+        <div class="admin-panel" data-sponsors-form>
+          <div class="admin-form-grid">
+            <label class="admin-field">
+              <span>제목</span>
+              <input name="sponsors-title" value="${escapeHtml(sponsorsData.title)}" placeholder="Sponsors" />
+            </label>
+            <label class="admin-field admin-field-wide">
+              <span>설명</span>
+              <input name="sponsors-description" value="${escapeHtml(sponsorsData.description)}" placeholder="후원 기업 및 기관 설명" />
+            </label>
+            <label class="admin-field">
+              <span>대표 이미지</span>
+              <input name="sponsors-hero" value="${escapeHtml(sponsorsData.heroImage)}" placeholder="/uploads/sponsors/hero/image.jpg" />
+            </label>
+          </div>
+
+          <div class="admin-subpanel">
+            <div class="admin-subpanel-header">
+              <h3>대표 이미지 업로드</h3>
+            </div>
+            <input type="file" accept="image/*" data-action="upload-sponsor-hero" />
+          </div>
+
+          <div class="admin-subpanel">
+            <div class="admin-subpanel-header">
+              <h3>스폰서 목록</h3>
+              <button class="admin-button" type="button" data-action="add-sponsor">스폰서 추가</button>
+            </div>
+            <div class="admin-stack">
+              ${renderSponsorRows() || '<p class="admin-empty">등록된 스폰서가 없습니다.</p>'}
+            </div>
+          </div>
+        </div>
+      `;
+    };
+
+    const renderContactRows = () =>
+      contactData.contacts
+        .map(
+          (contact, contactIndex) => `
+            <div class="admin-sponsor-row" data-contact-person>
+              <input name="contact-role" value="${escapeHtml(contact.role)}" placeholder="회장" />
+              <input name="contact-name" value="${escapeHtml(contact.name)}" placeholder="이름" />
+              <input name="contact-phone" value="${escapeHtml(contact.phone)}" placeholder="010-0000-0000" />
+              <input name="contact-email" value="${escapeHtml(contact.email)}" placeholder="email@example.com" />
+              <button class="admin-icon-button" type="button" data-action="move-contact-up" data-contact-index="${contactIndex}">위</button>
+              <button class="admin-icon-button" type="button" data-action="move-contact-down" data-contact-index="${contactIndex}">아래</button>
+              <button class="admin-icon-button" type="button" data-action="remove-contact" data-contact-index="${contactIndex}">삭제</button>
+            </div>
+          `,
+        )
+        .join("");
+
+    const renderContactSocialRows = () =>
+      contactData.socials
+        .map(
+          (social, socialIndex) => `
+            <div class="admin-sponsor-row" data-contact-social>
+              <input name="contact-social-name" value="${escapeHtml(social.name)}" placeholder="Instagram" />
+              <input name="contact-social-url" value="${escapeHtml(social.url)}" placeholder="https://example.com" />
+              <input name="contact-social-image" value="${escapeHtml(social.image)}" placeholder="/uploads/contact/socials/image.jpg" />
+              <input type="file" accept="image/*" data-action="upload-contact-social" data-social-index="${socialIndex}" />
+              <button class="admin-icon-button" type="button" data-action="move-contact-social-up" data-social-index="${socialIndex}">위</button>
+              <button class="admin-icon-button" type="button" data-action="move-contact-social-down" data-social-index="${socialIndex}">아래</button>
+              <button class="admin-icon-button" type="button" data-action="remove-contact-social" data-social-index="${socialIndex}">삭제</button>
+            </div>
+          `,
+        )
+        .join("");
+
+    const renderContactEditor = () => {
+      seasonEditor.innerHTML = `
+        <div class="admin-panel" data-contact-form>
+          <div class="admin-form-grid">
+            <label class="admin-field">
+              <span>제목</span>
+              <input name="contact-title" value="${escapeHtml(contactData.title)}" placeholder="Contact Us" />
+            </label>
+            <label class="admin-field admin-field-wide">
+              <span>설명</span>
+              <input name="contact-subtitle" value="${escapeHtml(contactData.subtitle)}" placeholder="연락처 안내 문구" />
+            </label>
+            <label class="admin-field">
+              <span>대표 이미지</span>
+              <input name="contact-hero" value="${escapeHtml(contactData.heroImage)}" placeholder="/uploads/contact/hero/image.jpg" />
+            </label>
+          </div>
+
+          <div class="admin-subpanel">
+            <div class="admin-subpanel-header">
+              <h3>대표 이미지 업로드</h3>
+            </div>
+            <input type="file" accept="image/*" data-action="upload-contact-hero" />
+          </div>
+
+          <div class="admin-subpanel">
+            <div class="admin-subpanel-header">
+              <h3>연락처</h3>
+              <button class="admin-button" type="button" data-action="add-contact">연락처 추가</button>
+            </div>
+            <div class="admin-stack">
+              ${renderContactRows() || '<p class="admin-empty">등록된 연락처가 없습니다.</p>'}
+            </div>
+          </div>
+
+          <div class="admin-subpanel">
+            <div class="admin-subpanel-header">
+              <h3>소셜 링크</h3>
+              <button class="admin-button" type="button" data-action="add-contact-social">소셜 추가</button>
+            </div>
+            <div class="admin-stack">
+              ${renderContactSocialRows() || '<p class="admin-empty">등록된 소셜 링크가 없습니다.</p>'}
+            </div>
+          </div>
+        </div>
+      `;
+    };
+
+    const renderEditor = () => {
+      renderSeasonOptions();
+
+      if (selectedKind() === "archive") {
+        seasonEditor.innerHTML = renderArchiveEditor();
+        return;
+      }
+
+      if (selectedKind() === "ob") {
+        seasonEditor.innerHTML = renderObEditor();
+        return;
+      }
+
+      const season = currentSeason();
+
+      if (!season) {
+        seasonEditor.innerHTML = '<p class="admin-empty">등록된 시즌이 없습니다.</p>';
+        return;
+      }
+
+      seasonEditor.innerHTML = `
+        <div class="admin-panel" data-season-form>
+          <div class="admin-form-grid">
+            <label class="admin-field">
+              <span>연도</span>
+              <input name="season-year" value="${escapeHtml(season.year)}" placeholder="2026" />
+            </label>
+            <label class="admin-field">
+              <span>제목</span>
+              <input name="season-title" value="${escapeHtml(season.title)}" placeholder="Members ${escapeHtml(season.year)}" />
+            </label>
+            <label class="admin-field admin-field-wide">
+              <span>설명</span>
+              <input name="season-subtitle" value="${escapeHtml(season.subtitle)}" placeholder="Tachyon Season ${escapeHtml(season.year)}." />
+            </label>
+          </div>
+
+          ${renderPhotoRows(season)}
+
+          <div class="admin-subpanel">
+            <div class="admin-subpanel-header">
+              <h3>멤버 섹션</h3>
+              <button class="admin-button" type="button" data-action="add-section">섹션 추가</button>
+            </div>
+            <div class="admin-stack" data-sections>
+              ${renderSections(season) || '<p class="admin-empty">등록된 멤버 섹션이 없습니다.</p>'}
+            </div>
+          </div>
+        </div>
+      `;
+    };
+
+    const readSeasonFromDom = () => {
+      const form = seasonEditor.querySelector("[data-season-form]");
+      const season = currentSeason();
+      if (!form || !season) {
+        return;
+      }
+
+      season.year = form.querySelector('[name="season-year"]').value.trim();
+      season.title = form.querySelector('[name="season-title"]').value.trim();
+      season.subtitle = form.querySelector('[name="season-subtitle"]').value.trim();
+      season.teamPhotos = [...form.querySelectorAll("[data-team-photo]")]
+        .map((row) => row.querySelector('[name="team-photo"]').value.trim())
+        .filter(Boolean);
+      season.sections = [...form.querySelectorAll("[data-section]")].map((sectionEl) => ({
+        title: sectionEl.querySelector('[name="section-title"]').value.trim(),
+        groups: [...sectionEl.querySelectorAll("[data-group]")].map((groupEl) => ({
+          title: groupEl.querySelector('[name="group-title"]').value.trim(),
+          members: [...groupEl.querySelectorAll("[data-member]")].map((memberEl) => ({
+            name: memberEl.querySelector('[name="member-name"]').value.trim(),
+            role: memberEl.querySelector('[name="member-role"]').value.trim(),
+            email: memberEl.querySelector('[name="member-email"]').value.trim(),
+            photo: memberEl.querySelector('[name="member-photo"]').value.trim() || defaultPhoto,
+          })),
+        })),
+      }));
+      selectedYear = `season:${season.year}`;
+    };
+
+    const readObFromDom = () => {
+      const form = seasonEditor.querySelector("[data-ob-form]");
+      if (!form) {
+        return;
+      }
+
+      membersData.ob.title = form.querySelector('[name="ob-title"]').value.trim();
+      membersData.ob.subtitle = form.querySelector('[name="ob-subtitle"]').value.trim();
+      membersData.ob.teamPhotos = [...form.querySelectorAll("[data-team-photo]")]
+        .map((row) => row.querySelector('[name="team-photo"]').value.trim())
+        .filter(Boolean);
+      membersData.ob.members = [...form.querySelectorAll("[data-ob-member]")].map((memberEl) => ({
+        name: memberEl.querySelector('[name="ob-member-name"]').value.trim(),
+        role: memberEl.querySelector('[name="ob-member-role"]').value.trim(),
+        email: memberEl.querySelector('[name="ob-member-email"]').value.trim(),
+        photo: memberEl.querySelector('[name="ob-member-photo"]').value.trim() || defaultPhoto,
+      }));
+    };
+
+    const readArchiveFromDom = () => {
+      const form = seasonEditor.querySelector("[data-archive-form]");
+      if (!form) {
+        return;
+      }
+
+      membersData.archive.title = form.querySelector('[name="archive-title"]').value.trim();
+      membersData.archive.subtitle = form.querySelector('[name="archive-subtitle"]').value.trim();
+      membersData.archive.groups = [...form.querySelectorAll("[data-archive-group]")].map((groupEl) => ({
+        label: groupEl.querySelector('[name="archive-group-label"]').value.trim(),
+        photos: [...groupEl.querySelectorAll("[data-archive-photo]")]
+          .map((photoEl) => photoEl.querySelector('[name="archive-photo"]').value.trim())
+          .filter(Boolean),
+      }));
+    };
+
+    const readCurrentEditorFromDom = () => {
+      if (selectedKind() === "archive") {
+        readArchiveFromDom();
+        return;
+      }
+
+      if (selectedKind() === "ob") {
+        readObFromDom();
+        return;
+      }
+
+      readSeasonFromDom();
+    };
+
+    const readSponsorsFromDom = () => {
+      const form = seasonEditor.querySelector("[data-sponsors-form]");
+      if (!form) {
+        return;
+      }
+
+      sponsorsData.title = form.querySelector('[name="sponsors-title"]').value.trim();
+      sponsorsData.description = form.querySelector('[name="sponsors-description"]').value.trim();
+      sponsorsData.heroImage = form.querySelector('[name="sponsors-hero"]').value.trim();
+      sponsorsData.items = [...form.querySelectorAll("[data-sponsor]")].map((sponsorEl) => ({
+        name: sponsorEl.querySelector('[name="sponsor-name"]').value.trim(),
+        url: sponsorEl.querySelector('[name="sponsor-url"]').value.trim(),
+        logo: sponsorEl.querySelector('[name="sponsor-logo"]').value.trim(),
+      }));
+    };
+
+    const readHomeFromDom = () => {
+      const form = seasonEditor.querySelector("[data-home-form]");
+      if (!form) {
+        return;
+      }
+
+      homeData.title = form.querySelector('[name="home-title"]').value.trim();
+      homeData.description = form.querySelector('[name="home-description"]').value.trim();
+      homeData.hero.lightImage = form.querySelector('[name="home-hero-light"]').value.trim();
+      homeData.hero.darkImage = form.querySelector('[name="home-hero-dark"]').value.trim();
+      homeData.hero.alt = form.querySelector('[name="home-hero-alt"]').value.trim();
+      homeData.hero.title = form.querySelector('[name="home-hero-title"]').value.trim();
+      homeData.hero.lead = form.querySelector('[name="home-hero-lead"]').value.trim();
+      homeData.cards = [...form.querySelectorAll("[data-home-card]")].map((cardEl) => ({
+        label: cardEl.querySelector('[name="home-card-label"]').value.trim(),
+        href: cardEl.querySelector('[name="home-card-href"]').value.trim(),
+        image: cardEl.querySelector('[name="home-card-image"]').value.trim(),
+        alt: cardEl.querySelector('[name="home-card-alt"]').value.trim(),
+      }));
+      homeData.contact.title = form.querySelector('[name="home-contact-title"]').value.trim();
+      homeData.contact.photos = [...form.querySelectorAll("[data-home-photo]")].map((photoEl) => ({
+        href: photoEl.querySelector('[name="home-photo-href"]').value.trim(),
+        image: photoEl.querySelector('[name="home-photo-image"]').value.trim(),
+        alt: photoEl.querySelector('[name="home-photo-alt"]').value.trim(),
+      }));
+      homeData.contact.links = [...form.querySelectorAll("[data-home-link]")].map((linkEl) => ({
+        label: linkEl.querySelector('[name="home-link-label"]').value.trim(),
+        href: linkEl.querySelector('[name="home-link-href"]').value.trim(),
+      }));
+    };
+
+    const readIntroFromDom = () => {
+      const form = seasonEditor.querySelector("[data-intro-form]");
+      if (!form) {
+        return;
+      }
+
+      introData.title = form.querySelector('[name="intro-title"]').value.trim();
+      introData.description = form.querySelector('[name="intro-description"]').value.trim();
+      introData.organization.title = form.querySelector('[name="intro-org-title"]').value.trim();
+      introData.organization.image = form.querySelector('[name="intro-org-image"]').value.trim();
+      introData.organization.alt = form.querySelector('[name="intro-org-alt"]').value.trim();
+      introData.sections = [...form.querySelectorAll("[data-intro-section]")].map((sectionEl) => ({
+        heading: sectionEl.querySelector('[name="intro-section-heading"]').value.trim(),
+        paragraphs: sectionEl
+          .querySelector('[name="intro-section-body"]')
+          .value.split(/\n\s*\n/)
+          .map((paragraph) => paragraph.trim())
+          .filter(Boolean),
+      }));
+    };
+
+    const readHistoryFromDom = () => {
+      const form = seasonEditor.querySelector("[data-history-form]");
+      if (!form) {
+        return;
+      }
+
+      historyData.title = form.querySelector('[name="history-title"]').value.trim();
+      historyData.description = form.querySelector('[name="history-description"]').value.trim();
+      historyData.vehicleSectionTitle = form.querySelector('[name="history-vehicle-section-title"]').value.trim();
+      historyData.groups = [...form.querySelectorAll("[data-history-group]")].map((groupEl) => ({
+        title: groupEl.querySelector('[name="history-group-title"]').value.trim(),
+        vehicles: [...groupEl.querySelectorAll("[data-history-vehicle]")].map((vehicleEl) => ({
+          name: vehicleEl.querySelector('[name="history-vehicle-name"]').value.trim(),
+          year: vehicleEl.querySelector('[name="history-vehicle-year"]').value.trim(),
+          competition: vehicleEl.querySelector('[name="history-vehicle-competition"]').value.trim(),
+          award: vehicleEl.querySelector('[name="history-vehicle-award"]').value.trim(),
+          image: vehicleEl.querySelector('[name="history-vehicle-image"]').value.trim(),
+          alt: vehicleEl.querySelector('[name="history-vehicle-alt"]').value.trim(),
+        })),
+      }));
+      historyData.awards.title = form.querySelector('[name="history-awards-title"]').value.trim();
+      historyData.awards.items = [...form.querySelectorAll("[data-history-award]")].map((awardEl) => ({
+        year: awardEl.querySelector('[name="history-award-year"]').value.trim(),
+        competition: awardEl.querySelector('[name="history-award-competition"]').value.trim(),
+        vehicle: awardEl.querySelector('[name="history-award-vehicle"]').value.trim(),
+        result: awardEl.querySelector('[name="history-award-result"]').value.trim(),
+      }));
+    };
+
+    const readContactFromDom = () => {
+      const form = seasonEditor.querySelector("[data-contact-form]");
+      if (!form) {
+        return;
+      }
+
+      contactData.title = form.querySelector('[name="contact-title"]').value.trim();
+      contactData.subtitle = form.querySelector('[name="contact-subtitle"]').value.trim();
+      contactData.heroImage = form.querySelector('[name="contact-hero"]').value.trim();
+      contactData.contacts = [...form.querySelectorAll("[data-contact-person]")].map((contactEl) => ({
+        role: contactEl.querySelector('[name="contact-role"]').value.trim(),
+        name: contactEl.querySelector('[name="contact-name"]').value.trim(),
+        phone: contactEl.querySelector('[name="contact-phone"]').value.trim(),
+        email: contactEl.querySelector('[name="contact-email"]').value.trim(),
+      }));
+      contactData.socials = [...form.querySelectorAll("[data-contact-social]")].map((socialEl) => ({
+        name: socialEl.querySelector('[name="contact-social-name"]').value.trim(),
+        url: socialEl.querySelector('[name="contact-social-url"]').value.trim(),
+        image: socialEl.querySelector('[name="contact-social-image"]').value.trim(),
+      }));
+    };
+
+    const swap = (array, from, to) => {
+      if (to < 0 || to >= array.length) {
+        return;
+      }
+      const item = array[from];
+      array[from] = array[to];
+      array[to] = item;
+    };
+
+    const uploadFile = async (file, year) => {
+      const formData = new FormData();
+      formData.append("year", year || "general");
+      formData.append("file", file);
+
+      const response = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: formData,
+        credentials: "same-origin",
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || "이미지를 업로드하지 못했습니다.");
+      }
+      return data.path;
+    };
+
+    const uploadFileTo = async (file, category, bucket) => {
+      const formData = new FormData();
+      formData.append("category", category);
+      formData.append("bucket", bucket);
+      formData.append("file", file);
+
+      const response = await fetch("/api/admin/upload", {
+        method: "POST",
+        body: formData,
+        credentials: "same-origin",
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || "이미지를 업로드하지 못했습니다.");
+      }
+      return data.path;
+    };
+
+    const isHomeEditor = () => activeEditor === "home" || activeEditor === "home-en";
+    const isIntroEditor = () => activeEditor === "intro" || activeEditor === "intro-en";
+    const homeApiPath = () => (activeEditor === "home-en" ? "/api/home-en" : "/api/home");
+    const adminHomeApiPath = () => (activeEditor === "home-en" ? "/api/admin/home-en" : "/api/admin/home");
+    const introApiPath = () => (activeEditor === "intro-en" ? "/api/intro-en" : "/api/intro");
+    const adminIntroApiPath = () => (activeEditor === "intro-en" ? "/api/admin/intro-en" : "/api/admin/intro");
+
+    const saveData = async () => {
+      readCurrentEditorFromDom();
+      const years = membersData.seasons.map((season) => season.year).filter(Boolean);
+      if (new Set(years).size !== years.length) {
+        setStatus("중복된 연도가 있습니다.", "error");
+        return;
+      }
+
+      membersData = normalizeData(
+        await requestJson("/api/admin/members", {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(membersData),
+        }),
+      );
+      renderEditor();
+      setStatus("저장했습니다.", "success");
+    };
+
+    const saveSponsorsData = async () => {
+      readSponsorsFromDom();
+      sponsorsData = normalizeSponsorsData(
+        await requestJson("/api/admin/sponsors", {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(sponsorsData),
+        }),
+      );
+      renderSponsorsEditor();
+      setStatus("저장했습니다.", "success");
+    };
+
+    const saveHomeData = async () => {
+      readHomeFromDom();
+      homeData = normalizeHomeData(
+        await requestJson(adminHomeApiPath(), {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(homeData),
+        }),
+      );
+      renderHomeEditor();
+      setStatus("저장했습니다.", "success");
+    };
+
+    const saveIntroData = async () => {
+      readIntroFromDom();
+      introData = normalizeIntroData(
+        await requestJson(adminIntroApiPath(), {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(introData),
+        }),
+      );
+      renderIntroEditor();
+      setStatus("저장했습니다.", "success");
+    };
+
+    const saveHistoryData = async () => {
+      readHistoryFromDom();
+      historyData = normalizeHistoryData(
+        await requestJson("/api/admin/history", {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(historyData),
+        }),
+      );
+      renderHistoryEditor();
+      setStatus("저장했습니다.", "success");
+    };
+
+    const saveContactData = async () => {
+      readContactFromDom();
+      contactData = normalizeContactData(
+        await requestJson("/api/admin/contact", {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(contactData),
+        }),
+      );
+      renderContactEditor();
+      setStatus("저장했습니다.", "success");
+    };
+
+    const handleSponsorsAction = async (actionEl) => {
+      const action = actionEl.dataset.action;
+      readSponsorsFromDom();
+      const sponsorIndex = Number(actionEl.dataset.sponsorIndex);
+
+      if (action === "add-sponsor") {
+        sponsorsData.items.push({ name: "", url: "", logo: "" });
+      }
+      if (action === "remove-sponsor") {
+        sponsorsData.items.splice(sponsorIndex, 1);
+      }
+      if (action === "move-sponsor-up") {
+        swap(sponsorsData.items, sponsorIndex, sponsorIndex - 1);
+      }
+      if (action === "move-sponsor-down") {
+        swap(sponsorsData.items, sponsorIndex, sponsorIndex + 1);
+      }
+
+      renderSponsorsEditor();
+      setStatus("");
+    };
+
+    const handleHomeAction = async (actionEl) => {
+      const action = actionEl.dataset.action;
+      readHomeFromDom();
+      const cardIndex = Number(actionEl.dataset.cardIndex);
+      const photoIndex = Number(actionEl.dataset.photoIndex);
+      const linkIndex = Number(actionEl.dataset.linkIndex);
+
+      if (action === "add-home-card") {
+        homeData.cards.push({ label: "", href: "", image: "", alt: "" });
+      }
+      if (action === "remove-home-card") {
+        homeData.cards.splice(cardIndex, 1);
+      }
+      if (action === "move-home-card-up") {
+        swap(homeData.cards, cardIndex, cardIndex - 1);
+      }
+      if (action === "move-home-card-down") {
+        swap(homeData.cards, cardIndex, cardIndex + 1);
+      }
+      if (action === "add-home-photo") {
+        homeData.contact.photos.push({ href: "", image: "", alt: "" });
+      }
+      if (action === "remove-home-photo") {
+        homeData.contact.photos.splice(photoIndex, 1);
+      }
+      if (action === "move-home-photo-up") {
+        swap(homeData.contact.photos, photoIndex, photoIndex - 1);
+      }
+      if (action === "move-home-photo-down") {
+        swap(homeData.contact.photos, photoIndex, photoIndex + 1);
+      }
+      if (action === "add-home-link") {
+        homeData.contact.links.push({ label: "", href: "" });
+      }
+      if (action === "remove-home-link") {
+        homeData.contact.links.splice(linkIndex, 1);
+      }
+      if (action === "move-home-link-up") {
+        swap(homeData.contact.links, linkIndex, linkIndex - 1);
+      }
+      if (action === "move-home-link-down") {
+        swap(homeData.contact.links, linkIndex, linkIndex + 1);
+      }
+
+      renderHomeEditor();
+      setStatus("");
+    };
+
+    const handleIntroAction = async (actionEl) => {
+      const action = actionEl.dataset.action;
+      readIntroFromDom();
+      const sectionIndex = Number(actionEl.dataset.sectionIndex);
+
+      if (action === "add-intro-section") {
+        introData.sections.push({ heading: "New Section", paragraphs: [""] });
+      }
+      if (action === "remove-intro-section") {
+        introData.sections.splice(sectionIndex, 1);
+      }
+      if (action === "move-intro-section-up") {
+        swap(introData.sections, sectionIndex, sectionIndex - 1);
+      }
+      if (action === "move-intro-section-down") {
+        swap(introData.sections, sectionIndex, sectionIndex + 1);
+      }
+
+      renderIntroEditor();
+      setStatus("");
+    };
+
+    const handleHistoryAction = async (actionEl) => {
+      const action = actionEl.dataset.action;
+      readHistoryFromDom();
+      const groupIndex = Number(actionEl.dataset.groupIndex);
+      const vehicleIndex = Number(actionEl.dataset.vehicleIndex);
+      const awardIndex = Number(actionEl.dataset.awardIndex);
+
+      if (action === "add-history-group") {
+        historyData.groups.push({ title: "New Series", vehicles: [] });
+      }
+      if (action === "remove-history-group") {
+        historyData.groups.splice(groupIndex, 1);
+      }
+      if (action === "move-history-group-up") {
+        swap(historyData.groups, groupIndex, groupIndex - 1);
+      }
+      if (action === "move-history-group-down") {
+        swap(historyData.groups, groupIndex, groupIndex + 1);
+      }
+      if (action === "add-history-vehicle") {
+        historyData.groups[groupIndex].vehicles.push({
+          name: "",
+          year: "",
+          competition: "",
+          award: "",
+          image: "",
+          alt: "",
+        });
+      }
+      if (action === "remove-history-vehicle") {
+        historyData.groups[groupIndex].vehicles.splice(vehicleIndex, 1);
+      }
+      if (action === "move-history-vehicle-up") {
+        swap(historyData.groups[groupIndex].vehicles, vehicleIndex, vehicleIndex - 1);
+      }
+      if (action === "move-history-vehicle-down") {
+        swap(historyData.groups[groupIndex].vehicles, vehicleIndex, vehicleIndex + 1);
+      }
+      if (action === "add-history-award") {
+        historyData.awards.items.push({ year: "", competition: "", vehicle: "", result: "" });
+      }
+      if (action === "remove-history-award") {
+        historyData.awards.items.splice(awardIndex, 1);
+      }
+      if (action === "move-history-award-up") {
+        swap(historyData.awards.items, awardIndex, awardIndex - 1);
+      }
+      if (action === "move-history-award-down") {
+        swap(historyData.awards.items, awardIndex, awardIndex + 1);
+      }
+
+      renderHistoryEditor();
+      setStatus("");
+    };
+
+    const handleContactAction = async (actionEl) => {
+      const action = actionEl.dataset.action;
+      readContactFromDom();
+      const contactIndex = Number(actionEl.dataset.contactIndex);
+      const socialIndex = Number(actionEl.dataset.socialIndex);
+
+      if (action === "add-contact") {
+        contactData.contacts.push({ role: "", name: "", phone: "", email: "" });
+      }
+      if (action === "remove-contact") {
+        contactData.contacts.splice(contactIndex, 1);
+      }
+      if (action === "move-contact-up") {
+        swap(contactData.contacts, contactIndex, contactIndex - 1);
+      }
+      if (action === "move-contact-down") {
+        swap(contactData.contacts, contactIndex, contactIndex + 1);
+      }
+      if (action === "add-contact-social") {
+        contactData.socials.push({ name: "", url: "", image: "" });
+      }
+      if (action === "remove-contact-social") {
+        contactData.socials.splice(socialIndex, 1);
+      }
+      if (action === "move-contact-social-up") {
+        swap(contactData.socials, socialIndex, socialIndex - 1);
+      }
+      if (action === "move-contact-social-down") {
+        swap(contactData.socials, socialIndex, socialIndex + 1);
+      }
+
+      renderContactEditor();
+      setStatus("");
+    };
+
+    const handleAction = async (actionEl) => {
+      const action = actionEl.dataset.action;
+      readCurrentEditorFromDom();
+
+      if (action === "add-season") {
+        const year = nextSeasonYear();
+        membersData.seasons.unshift({
+          year,
+          title: `Members ${year}`,
+          subtitle: `Tachyon Season ${year}.`,
+          teamPhotos: [],
+          sections: [],
+        });
+        selectedYear = `season:${year}`;
+        renderEditor();
+        setStatus("");
+        return;
+      }
+
+      if (action === "save") {
+        await saveData();
+        return;
+      }
+
+      if (action === "back-pages") {
+        adminEditor.hidden = true;
+        adminPages.hidden = false;
+        setStatus("");
+        return;
+      }
+
+      if (action === "logout") {
+        await requestJson("/api/admin/logout", { method: "POST" });
+        adminEditor.hidden = true;
+        adminPages.hidden = true;
+        loginPanel.hidden = false;
+        setStatus("");
+        return;
+      }
+
+      if (selectedKind() === "archive") {
+        const groupIndex = Number(actionEl.dataset.groupIndex);
+        const photoIndex = Number(actionEl.dataset.photoIndex);
+
+        if (action === "add-archive-group") {
+          membersData.archive.groups.push({ label: "New Archive", photos: [] });
+        }
+        if (action === "remove-archive-group") {
+          membersData.archive.groups.splice(groupIndex, 1);
+        }
+        if (action === "move-archive-group-up") {
+          swap(membersData.archive.groups, groupIndex, groupIndex - 1);
+        }
+        if (action === "move-archive-group-down") {
+          swap(membersData.archive.groups, groupIndex, groupIndex + 1);
+        }
+        if (action === "add-archive-photo") {
+          membersData.archive.groups[groupIndex].photos.push("");
+        }
+        if (action === "remove-archive-photo") {
+          membersData.archive.groups[groupIndex].photos.splice(photoIndex, 1);
+        }
+
+        renderEditor();
+        setStatus("");
+        return;
+      }
+
+      if (selectedKind() === "ob") {
+        const memberIndex = Number(actionEl.dataset.memberIndex);
+        const photoIndex = Number(actionEl.dataset.photoIndex);
+
+        if (action === "add-team-photo") {
+          membersData.ob.teamPhotos.push("");
+        }
+        if (action === "remove-team-photo") {
+          membersData.ob.teamPhotos.splice(photoIndex, 1);
+        }
+        if (action === "add-ob-member") {
+          membersData.ob.members.push({
+            name: "",
+            role: "OB",
+            email: "",
+            photo: defaultPhoto,
+          });
+        }
+        if (action === "remove-ob-member") {
+          membersData.ob.members.splice(memberIndex, 1);
+        }
+        if (action === "move-ob-member-up") {
+          swap(membersData.ob.members, memberIndex, memberIndex - 1);
+        }
+        if (action === "move-ob-member-down") {
+          swap(membersData.ob.members, memberIndex, memberIndex + 1);
+        }
+
+        renderEditor();
+        setStatus("");
+        return;
+      }
+
+      const season = currentSeason();
+      if (!season) {
+        return;
+      }
+
+      const sectionIndex = Number(actionEl.dataset.sectionIndex);
+      const groupIndex = Number(actionEl.dataset.groupIndex);
+      const memberIndex = Number(actionEl.dataset.memberIndex);
+      const photoIndex = Number(actionEl.dataset.photoIndex);
+
+      if (action === "add-team-photo") {
+        season.teamPhotos.push("");
+      }
+      if (action === "remove-team-photo") {
+        season.teamPhotos.splice(photoIndex, 1);
+      }
+      if (action === "add-section") {
+        season.sections.push({ title: "New Section", groups: [] });
+      }
+      if (action === "remove-section") {
+        season.sections.splice(sectionIndex, 1);
+      }
+      if (action === "move-section-up") {
+        swap(season.sections, sectionIndex, sectionIndex - 1);
+      }
+      if (action === "move-section-down") {
+        swap(season.sections, sectionIndex, sectionIndex + 1);
+      }
+      if (action === "add-group") {
+        season.sections[sectionIndex].groups.push({ title: "New Group", members: [] });
+      }
+      if (action === "remove-group") {
+        season.sections[sectionIndex].groups.splice(groupIndex, 1);
+      }
+      if (action === "move-group-up") {
+        swap(season.sections[sectionIndex].groups, groupIndex, groupIndex - 1);
+      }
+      if (action === "move-group-down") {
+        swap(season.sections[sectionIndex].groups, groupIndex, groupIndex + 1);
+      }
+      if (action === "add-member") {
+        season.sections[sectionIndex].groups[groupIndex].members.push({
+          name: "",
+          role: "",
+          email: "",
+          photo: defaultPhoto,
+        });
+      }
+      if (action === "remove-member") {
+        season.sections[sectionIndex].groups[groupIndex].members.splice(memberIndex, 1);
+      }
+      if (action === "move-member-up") {
+        swap(season.sections[sectionIndex].groups[groupIndex].members, memberIndex, memberIndex - 1);
+      }
+      if (action === "move-member-down") {
+        swap(season.sections[sectionIndex].groups[groupIndex].members, memberIndex, memberIndex + 1);
+      }
+
+      renderEditor();
+      setStatus("");
+    };
+
+    loginForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      try {
+        await requestJson("/api/admin/login", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ password: passwordInput.value }),
+        });
+        passwordInput.value = "";
+        await showPageList();
+      } catch (error) {
+        setStatus(error.message, "error");
+      }
+    });
+
+    seasonSelect.addEventListener("change", () => {
+      readCurrentEditorFromDom();
+      selectedYear = seasonSelect.value;
+      renderEditor();
+      setStatus("");
+    });
+
+    adminVisitPageSelect.addEventListener("change", () => {
+      selectedVisitRoute = adminVisitPageSelect.value;
+      renderVisitChart();
+      setStatus("");
+    });
+
+    adminPages.addEventListener("click", async (event) => {
+      const actionEl = event.target.closest("[data-action]");
+      if (!actionEl) {
+        return;
+      }
+
+      try {
+        if (actionEl.dataset.action === "open-editor" && actionEl.dataset.editor === "members") {
+          await loadMembersEditor();
+        }
+
+        if (actionEl.dataset.action === "open-editor" && actionEl.dataset.editor === "home") {
+          await loadHomeEditor();
+        }
+
+        if (actionEl.dataset.action === "open-editor" && actionEl.dataset.editor === "home-en") {
+          await loadHomeEditor("home-en");
+        }
+
+        if (actionEl.dataset.action === "open-editor" && actionEl.dataset.editor === "intro") {
+          await loadIntroEditor();
+        }
+
+        if (actionEl.dataset.action === "open-editor" && actionEl.dataset.editor === "intro-en") {
+          await loadIntroEditor("intro-en");
+        }
+
+        if (actionEl.dataset.action === "open-editor" && actionEl.dataset.editor === "history") {
+          await loadHistoryEditor();
+        }
+
+        if (actionEl.dataset.action === "open-editor" && actionEl.dataset.editor === "sponsors") {
+          await loadSponsorsEditor();
+        }
+
+        if (actionEl.dataset.action === "open-editor" && actionEl.dataset.editor === "contact") {
+          await loadContactEditor();
+        }
+
+        if (actionEl.dataset.action === "logout") {
+          await requestJson("/api/admin/logout", { method: "POST" });
+          adminPages.hidden = true;
+          loginPanel.hidden = false;
+          setStatus("");
+        }
+      } catch (error) {
+        setStatus(error.message, "error");
+      }
+    });
+
+    adminPasswordForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      if (newPasswordInput.value !== confirmPasswordInput.value) {
+        setStatus("새 비밀번호 확인이 일치하지 않습니다.", "error");
+        return;
+      }
+
+      try {
+        await requestJson("/api/admin/change-password", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            currentPassword: currentPasswordInput.value,
+            newPassword: newPasswordInput.value,
+          }),
+        });
+
+        adminPasswordForm.reset();
+        setStatus("비밀번호를 변경했습니다.", "success");
+      } catch (error) {
+        setStatus(error.message, "error");
+      }
+    });
+
+    adminEditor.addEventListener("click", (event) => {
+      const actionEl = event.target.closest("[data-action]");
+      if (!actionEl || actionEl.type === "file") {
+        return;
+      }
+
+      const action = actionEl.dataset.action;
+
+      if (action === "save") {
+        const save =
+          activeEditor === "sponsors"
+            ? saveSponsorsData
+            : isHomeEditor()
+              ? saveHomeData
+            : isIntroEditor()
+              ? saveIntroData
+            : activeEditor === "history"
+              ? saveHistoryData
+            : activeEditor === "contact"
+              ? saveContactData
+              : saveData;
+        save().catch((error) => setStatus(error.message, "error"));
+        return;
+      }
+
+      if (action === "back-pages") {
+        adminEditor.hidden = true;
+        adminPages.hidden = false;
+        setStatus("");
+        return;
+      }
+
+      if (action === "logout") {
+        requestJson("/api/admin/logout", { method: "POST" })
+          .then(() => {
+            adminEditor.hidden = true;
+            adminPages.hidden = true;
+            loginPanel.hidden = false;
+            setStatus("");
+          })
+          .catch((error) => setStatus(error.message, "error"));
+        return;
+      }
+
+      const handler =
+        activeEditor === "sponsors"
+          ? handleSponsorsAction
+          : isHomeEditor()
+            ? handleHomeAction
+          : isIntroEditor()
+            ? handleIntroAction
+          : activeEditor === "history"
+            ? handleHistoryAction
+          : activeEditor === "contact"
+            ? handleContactAction
+            : handleAction;
+      handler(actionEl).catch((error) => setStatus(error.message, "error"));
+    });
+
+    adminEditor.addEventListener("change", async (event) => {
+      const fileInput = event.target.closest('input[type="file"][data-action]');
+      if (!fileInput || !fileInput.files?.[0]) {
+        return;
+      }
+
+      try {
+        if (activeEditor === "sponsors") {
+          readSponsorsFromDom();
+          const action = fileInput.dataset.action;
+          const path = await uploadFileTo(fileInput.files[0], "sponsors", action === "upload-sponsor-hero" ? "hero" : "logos");
+
+          if (action === "upload-sponsor-hero") {
+            sponsorsData.heroImage = path;
+          }
+
+          if (action === "upload-sponsor-logo") {
+            sponsorsData.items[Number(fileInput.dataset.sponsorIndex)].logo = path;
+          }
+
+          renderSponsorsEditor();
+          setStatus("이미지를 업로드했습니다. 저장을 눌러 반영하세요.", "success");
+          return;
+        }
+
+        if (isHomeEditor()) {
+          readHomeFromDom();
+          const action = fileInput.dataset.action;
+          const category = activeEditor === "home-en" ? "home-en" : "home";
+          const bucket =
+            action === "upload-home-hero-light" || action === "upload-home-hero-dark"
+              ? "hero"
+              : action === "upload-home-card"
+                ? "cards"
+                : "contact";
+          const path = await uploadFileTo(fileInput.files[0], category, bucket);
+
+          if (action === "upload-home-hero-light") {
+            homeData.hero.lightImage = path;
+          }
+          if (action === "upload-home-hero-dark") {
+            homeData.hero.darkImage = path;
+          }
+          if (action === "upload-home-card") {
+            homeData.cards[Number(fileInput.dataset.cardIndex)].image = path;
+          }
+          if (action === "upload-home-photo") {
+            homeData.contact.photos[Number(fileInput.dataset.photoIndex)].image = path;
+          }
+
+          renderHomeEditor();
+          setStatus("이미지를 업로드했습니다. 저장을 눌러 반영하세요.", "success");
+          return;
+        }
+
+        if (isIntroEditor()) {
+          readIntroFromDom();
+          const category = activeEditor === "intro-en" ? "intro-en" : "intro";
+          const path = await uploadFileTo(fileInput.files[0], category, "organization");
+          introData.organization.image = path;
+          renderIntroEditor();
+          setStatus("이미지를 업로드했습니다. 저장을 눌러 반영하세요.", "success");
+          return;
+        }
+
+        if (activeEditor === "history") {
+          readHistoryFromDom();
+          const path = await uploadFileTo(fileInput.files[0], "history", "vehicles");
+          const group = historyData.groups[Number(fileInput.dataset.groupIndex)];
+          const vehicle = group?.vehicles[Number(fileInput.dataset.vehicleIndex)];
+          if (vehicle) {
+            vehicle.image = path;
+          }
+
+          renderHistoryEditor();
+          setStatus("이미지를 업로드했습니다. 저장을 눌러 반영하세요.", "success");
+          return;
+        }
+
+        if (activeEditor === "contact") {
+          readContactFromDom();
+          const action = fileInput.dataset.action;
+          const path = await uploadFileTo(fileInput.files[0], "contact", action === "upload-contact-hero" ? "hero" : "socials");
+
+          if (action === "upload-contact-hero") {
+            contactData.heroImage = path;
+          }
+
+          if (action === "upload-contact-social") {
+            contactData.socials[Number(fileInput.dataset.socialIndex)].image = path;
+          }
+
+          renderContactEditor();
+          setStatus("이미지를 업로드했습니다. 저장을 눌러 반영하세요.", "success");
+          return;
+        }
+
+        readCurrentEditorFromDom();
+        const kind = selectedKind();
+        const season = currentSeason();
+        const path = await uploadFile(fileInput.files[0], selectedUploadBucket());
+
+        if (fileInput.dataset.action === "upload-team-photo") {
+          if (kind === "ob") {
+            membersData.ob.teamPhotos[Number(fileInput.dataset.photoIndex)] = path;
+          } else if (season) {
+            season.teamPhotos[Number(fileInput.dataset.photoIndex)] = path;
+          }
+        }
+
+        if (fileInput.dataset.action === "upload-member-photo") {
+          const section = season.sections[Number(fileInput.dataset.sectionIndex)];
+          const group = section.groups[Number(fileInput.dataset.groupIndex)];
+          const member = group.members[Number(fileInput.dataset.memberIndex)];
+          member.photo = path;
+        }
+
+        if (fileInput.dataset.action === "upload-ob-member-photo") {
+          const member = membersData.ob.members[Number(fileInput.dataset.memberIndex)];
+          member.photo = path;
+        }
+
+        if (fileInput.dataset.action === "upload-archive-photo") {
+          const group = membersData.archive.groups[Number(fileInput.dataset.groupIndex)];
+          group.photos[Number(fileInput.dataset.photoIndex)] = path;
+        }
+
+        renderEditor();
+        setStatus("이미지를 업로드했습니다. 저장을 눌러 반영하세요.", "success");
+      } catch (error) {
+        setStatus(error.message, "error");
+      }
+    });
+
+    const showPageList = async () => {
+      sitePages = (await requestJson("/api/admin/pages")).map(normalizePage);
+      visitsData = normalizeVisitsData(await requestJson("/api/admin/visits"));
+      renderPageList();
+      loginPanel.hidden = true;
+      adminPages.hidden = false;
+      adminEditor.hidden = true;
+      setStatus("");
+    };
+
+    const loadMembersEditor = async () => {
+      setEditorChrome("members");
+      membersData = normalizeData(await requestJson("/api/members"));
+      sortSeasons();
+      selectedYear = membersData.seasons[0] ? `season:${membersData.seasons[0].year}` : "archive";
+      loginPanel.hidden = true;
+      adminPages.hidden = true;
+      adminEditor.hidden = false;
+      renderEditor();
+      setStatus("");
+    };
+
+    const loadHomeEditor = async (editor = "home") => {
+      setEditorChrome(editor);
+      homeData = normalizeHomeData(await requestJson(homeApiPath()));
+      loginPanel.hidden = true;
+      adminPages.hidden = true;
+      adminEditor.hidden = false;
+      renderHomeEditor();
+      setStatus("");
+    };
+
+    const loadIntroEditor = async (editor = "intro") => {
+      setEditorChrome(editor);
+      introData = normalizeIntroData(await requestJson(introApiPath()));
+      loginPanel.hidden = true;
+      adminPages.hidden = true;
+      adminEditor.hidden = false;
+      renderIntroEditor();
+      setStatus("");
+    };
+
+    const loadHistoryEditor = async () => {
+      setEditorChrome("history");
+      historyData = normalizeHistoryData(await requestJson("/api/history"));
+      loginPanel.hidden = true;
+      adminPages.hidden = true;
+      adminEditor.hidden = false;
+      renderHistoryEditor();
+      setStatus("");
+    };
+
+    const loadSponsorsEditor = async () => {
+      setEditorChrome("sponsors");
+      sponsorsData = normalizeSponsorsData(await requestJson("/api/sponsors"));
+      loginPanel.hidden = true;
+      adminPages.hidden = true;
+      adminEditor.hidden = false;
+      renderSponsorsEditor();
+      setStatus("");
+    };
+
+    const loadContactEditor = async () => {
+      setEditorChrome("contact");
+      contactData = normalizeContactData(await requestJson("/api/contact"));
+      loginPanel.hidden = true;
+      adminPages.hidden = true;
+      adminEditor.hidden = false;
+      renderContactEditor();
+      setStatus("");
+    };
+
+    const init = async () => {
+      try {
+        const session = await requestJson("/api/admin/session");
+        if (session.authenticated) {
+          await showPageList();
+        }
+      } catch {
+        loginPanel.hidden = false;
+      }
+    };
+
+    init();
+  </script>
+</BaseLayout>

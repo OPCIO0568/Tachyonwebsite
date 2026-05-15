@@ -1,0 +1,225 @@
+{
+  "seasons": [
+    {
+      "year": "2026",
+      "title": "Members 2026",
+      "subtitle": "Tachyon Season 2026.",
+      "teamPhotos": [],
+      "sections": [
+        {
+          "title": "Leadership",
+          "groups": [
+            {
+              "title": "",
+              "members": [
+                {
+                  "name": "1111",
+                  "role": "회장",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "이름 입력",
+                  "role": "PM",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Aero",
+          "groups": [
+            {
+              "title": "Aero Body",
+              "members": [
+                {
+                  "name": "이름 입력",
+                  "role": "Aero Body",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                }
+              ]
+            },
+            {
+              "title": "Aero Parts",
+              "members": [
+                {
+                  "name": "이름 입력",
+                  "role": "Aero Parts",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Chassis",
+          "groups": [
+            {
+              "title": "Frame",
+              "members": [
+                {
+                  "name": "이름 입력",
+                  "role": "Frame",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                }
+              ]
+            },
+            {
+              "title": "Suspension",
+              "members": [
+                {
+                  "name": "이름 입력",
+                  "role": "Geometry",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "이름 입력",
+                  "role": "Component",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                }
+              ]
+            },
+            {
+              "title": "Brake",
+              "members": [
+                {
+                  "name": "이름 입력",
+                  "role": "Brake",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "PT",
+          "groups": [
+            {
+              "title": "Engine",
+              "members": [
+                {
+                  "name": "이름 입력",
+                  "role": "Engine",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                }
+              ]
+            },
+            {
+              "title": "Intake",
+              "members": [
+                {
+                  "name": "이름 입력",
+                  "role": "Intake",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                }
+              ]
+            },
+            {
+              "title": "Exhaust",
+              "members": [
+                {
+                  "name": "이름 입력",
+                  "role": "Exhaust",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                }
+              ]
+            },
+            {
+              "title": "Electronic",
+              "members": [
+                {
+                  "name": "이름 입력",
+                  "role": "Electronic",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "year": "2025",
+      "title": "Members 2025",
+      "subtitle": "Tachyon Season 2025.",
+      "teamPhotos": [
+        "/images/profile/2025/2025-1.jpg",
+        "/images/profile/2025/2025-2.jpg",
+        "/images/profile/2025/2025.JPG"
+      ],
+      "sections": []
+    },
+    {
+      "year": "2024",
+      "title": "Members 2024",
+      "subtitle": "Tachyon Season 2024.",
+      "teamPhotos": [
+        "/images/profile/2024/2024_1.jpg",
+        "/images/profile/2024/2024_2.jpg"
+      ],
+      "sections": []
+    }
+  ],
+  "archive": {
+    "title": "Members Archive",
+    "subtitle": "2022-2023 team photos.",
+    "groups": [
+      {
+        "label": "2023",
+        "photos": [
+          "/images/profile/archive/2023-1.jpg",
+          "/images/profile/archive/2023-2.jpg"
+        ]
+      },
+      {
+        "label": "2022",
+        "photos": [
+          "/images/profile/archive/2022.jpg"
+        ]
+      }
+    ]
+  },
+  "ob": {
+    "title": "OB Members",
+    "subtitle": "OB",
+    "teamPhotos": [],
+    "members": [
+      {
+        "name": "이름 입력",
+        "role": "OB",
+        "email": "",
+        "photo": "/images/profile/unprofile.jpg"
+      },
+      {
+        "name": "이름 입력",
+        "role": "OB",
+        "email": "",
+        "photo": "/images/profile/unprofile.jpg"
+      },
+      {
+        "name": "이름 입력",
+        "role": "OB",
+        "email": "",
+        "photo": "/images/profile/unprofile.jpg"
+      },
+      {
+        "name": "이름 입력",
+        "role": "OB",
+        "email": "",
+        "photo": "/images/profile/unprofile.jpg"
+      }
+    ]
+  }
+}

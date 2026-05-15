@@ -1,0 +1,32 @@
+{
+  "title": "About Us",
+  "description": "About Tachyon and the competitions we enter",
+  "sections": [
+    {
+      "heading": "About Us",
+      "paragraphs": [
+        "Tachyon is the student formula team at Chungbuk National University. We design, build, and test our own open-wheel race car, and we run the entire project as a team. Turning classroom theory into a real vehicle is what defines our work."
+      ]
+    },
+    {
+      "heading": "What We Do",
+      "paragraphs": [
+        "We develop a car that meets Formula SAE Korea and Formula Student regulations. Team members take ownership across structures, powertrain, aero, chassis, electronics, and operations to gain experience close to real industry workflows.",
+        "Beyond manufacturing, we improve the car through testing, data-driven decisions, and continuous iteration of design and performance."
+      ]
+    },
+    {
+      "heading": "Competition",
+      "paragraphs": [
+        "Formula SAE Korea is an engineering design competition for university teams. Static events cover design review, cost, and business presentation, while dynamic events include acceleration, skidpad, autocross, and endurance.",
+        "Every car must pass technical inspection and safety tests before competition. Preparation, teamwork, and execution directly impact results on race day.",
+        "https://www.ksae.org/jajak/"
+      ]
+    }
+  ],
+  "organization": {
+    "title": "Organization",
+    "image": "/images/organization.png",
+    "alt": "Team organization chart"
+  }
+}

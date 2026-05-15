@@ -1,0 +1,42 @@
+{
+  "title": "Contact Us",
+  "subtitle": "",
+  "heroImage": "/images/banner.jpg",
+  "contacts": [
+    {
+      "role": "회장",
+      "name": "조진우",
+      "phone": "010-0000-0000",
+      "email": "president@example.com"
+    },
+    {
+      "role": "PM",
+      "name": "이름 입력",
+      "phone": "010-0000-0000",
+      "email": "pm@example.com"
+    },
+    {
+      "role": "Email",
+      "name": "이름 입력",
+      "phone": "010-0000-0000",
+      "email": "tachyon@example.com"
+    }
+  ],
+  "socials": [
+    {
+      "name": "Instagram",
+      "url": "https://www.instagram.com/cbnu_tachyon/",
+      "image": "/images/photo/img3.jpg"
+    },
+    {
+      "name": "YouTube",
+      "url": "http://www.youtube.com/@CBNUTACHYON/",
+      "image": "/images/photo/img4.jpg"
+    },
+    {
+      "name": "Naver Cafe",
+      "url": "https://cafe.naver.com/tachyonformula/",
+      "image": "/images/photo/img5.jpg"
+    }
+  ]
+}
