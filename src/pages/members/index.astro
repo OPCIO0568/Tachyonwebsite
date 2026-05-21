@@ -86,8 +86,8 @@ import fallbackMembersData from "../../../data/members.json";
 
     const renderMember = (member) => {
       const email = normalizeEmail(member.email);
-      const emailLink = email
-        ? `<a class="member-link" href="mailto:${escapeHtml(email)}">Email</a>`
+      const emailButton = email
+        ? `<button class="member-link member-email-copy" type="button" data-email="${escapeHtml(email)}" aria-label="${escapeHtml(`${email} copy`)}">Email</button>`
         : "";
 
       return `
@@ -95,7 +95,7 @@ import fallbackMembersData from "../../../data/members.json";
           <img class="member-photo" src="${escapeHtml(member.photo || fallbackPhoto)}" alt="${escapeHtml(member.name || member.role || "Member")}">
           <h3 class="member-name">${escapeHtml(member.name || "이름 입력")}</h3>
           <p class="member-role">${escapeHtml(member.role || "")}</p>
-          ${emailLink}
+          ${emailButton}
         </article>
       `;
     };
@@ -210,13 +210,53 @@ import fallbackMembersData from "../../../data/members.json";
       }
     };
 
+    const copyToClipboard = async (text) => {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+      }
+
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.setAttribute("readonly", "");
+      textarea.style.position = "fixed";
+      textarea.style.left = "-9999px";
+      document.body.append(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      textarea.remove();
+    };
+
+    const showCopyState = (button, label, className) => {
+      const originalLabel = button.dataset.label || button.textContent;
+      button.dataset.label = originalLabel;
+      button.textContent = label;
+      button.classList.add(className);
+
+      window.setTimeout(() => {
+        button.textContent = originalLabel;
+        button.classList.remove(className);
+      }, 1400);
+    };
+
     const init = async () => {
       try {
         const data = await loadMembersData();
         let active = getInitialView(data);
         render(data, active);
 
-        app.addEventListener("click", (event) => {
+        app.addEventListener("click", async (event) => {
+          const emailButton = event.target.closest(".member-email-copy");
+          if (emailButton) {
+            try {
+              await copyToClipboard(emailButton.dataset.email || "");
+              showCopyState(emailButton, "Copied", "is-copied");
+            } catch {
+              showCopyState(emailButton, "Failed", "is-copy-failed");
+            }
+            return;
+          }
+
           const tab = event.target.closest(".member-tab");
           if (!tab) {
             return;

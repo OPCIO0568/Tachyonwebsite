@@ -15,6 +15,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   font-family: "Space Grotesk", "Noto Sans KR", system-ui, -apple-system, sans-serif;
@@ -348,10 +352,21 @@ a {
   border-radius: 2px;
   background: #000;
   color: #fff;
+  cursor: pointer;
+  font: inherit;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  text-decoration: none;
+}
+
+.member-link.is-copied {
+  background: #165f3c;
+}
+
+.member-link.is-copy-failed {
+  background: #6b1d1d;
 }
 
 .org-chart {

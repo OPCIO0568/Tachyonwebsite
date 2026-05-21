@@ -30,6 +30,7 @@
 - [Ubuntu 서버 배포](#ubuntu-서버-배포)
 - [백업과 복구](#백업과-복구)
 - [비밀번호 초기화](#비밀번호-초기화)
+- [Google 검색 등록](#google-검색-등록)
 - [추가 문서](#추가-문서)
 - [GitHub 업로드 전 체크리스트](#github-업로드-전-체크리스트)
 - [문제 해결](#문제-해결)
@@ -480,6 +481,35 @@ Remove-Item .\data\auth.json
 $env:TACHYON_ADMIN_PASSWORD="새초기비밀번호"
 npm run serve
 ```
+
+## Google 검색 등록
+
+Google 검색에 사이트를 노출하려면 배포 후 Google Search Console에서 소유권 확인과 색인 요청을 해야 합니다.
+
+이 프로젝트에는 아래 파일이 포함되어 있습니다.
+
+```text
+public/google5b24a55f30a59a7b.html
+public/robots.txt
+public/sitemap.xml
+```
+
+배포 후 아래 주소가 열리는지 확인합니다.
+
+```text
+https://tachyon.cbnu.ac.kr/google5b24a55f30a59a7b.html
+https://tachyon.cbnu.ac.kr/robots.txt
+https://tachyon.cbnu.ac.kr/sitemap.xml
+```
+
+확인 순서:
+
+1. Google Search Console에서 `https://tachyon.cbnu.ac.kr` 속성을 추가합니다.
+2. HTML 파일 방식으로 소유권을 확인합니다.
+3. `sitemap.xml`을 제출합니다.
+4. URL 검사에서 메인 페이지를 검사한 뒤 색인 생성을 요청합니다.
+
+검색 결과 반영은 즉시 되지 않습니다. 보통 며칠 이상 걸릴 수 있습니다.
 
 ## 추가 문서
 

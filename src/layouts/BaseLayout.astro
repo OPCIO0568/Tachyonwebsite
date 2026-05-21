@@ -23,6 +23,11 @@ const langHref = langHrefMap[currentPath] ?? (isEnglish ? "/" : "/en");
 const langLabel = isEnglish ? "KR" : "EN";
 const htmlLang = isEnglish ? "en" : "ko";
 const currentYear = new Date().getFullYear();
+const siteOrigin = "https://tachyon.cbnu.ac.kr";
+const canonicalUrl = new URL(Astro.url.pathname, siteOrigin).toString();
+const imageUrl = new URL("/images/tachyon-logo-link.png", siteOrigin).toString();
+const isAdminPage = currentPath.startsWith("/admin");
+const fullTitle = title === "Tachyon" ? title : `${title} | Tachyon`;
 ---
 
 <!doctype html>
@@ -31,8 +36,16 @@ const currentYear = new Date().getFullYear();
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content={description} />
+    <meta name="robots" content={isAdminPage ? "noindex, nofollow" : "index, follow"} />
+    <link rel="canonical" href={canonicalUrl} />
     <link rel="icon" type="image/svg+xml" href="/images/tachyon-logo-link.png" />
-    <title>{title}</title>
+    <meta property="og:site_name" content="Tachyon" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={imageUrl} />
+    <title>{fullTitle}</title>
   </head>
   <body>
     <header class="site-header">
