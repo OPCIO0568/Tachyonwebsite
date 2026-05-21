@@ -1,0 +1,498 @@
+{
+  "seasons": [
+    {
+      "year": "2026",
+      "title": "Members 2026",
+      "subtitle": "Tachyon Season 2026.",
+      "teamPhotos": [],
+      "sections": [
+        {
+          "title": "Leadership",
+          "groups": [
+            {
+              "title": "",
+              "members": [
+                {
+                  "name": "조진우",
+                  "role": "회장",
+                  "email": "test@test.com",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "이정윤",
+                  "role": "PM",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "장준혁",
+                  "role": "총무",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Aero",
+          "groups": [
+            {
+              "title": "",
+              "members": [
+                {
+                  "name": "최상건",
+                  "role": "Aero",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "신승우",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "어윤호",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "이정우",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "이준현",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "정다인",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "조상영",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "최우찬",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Chassis",
+          "groups": [
+            {
+              "title": "Frame",
+              "members": [
+                {
+                  "name": "김수현",
+                  "role": "Frame",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "주재석",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "강민균",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                }
+              ]
+            },
+            {
+              "title": "Suspension",
+              "members": [
+                {
+                  "name": "강민균",
+                  "role": "Geometry",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "김가은",
+                  "role": "Component",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "유시현",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "이은서",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "정준호",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "김재휘",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "윤희범",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "박노민",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "조준연",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                }
+              ]
+            },
+            {
+              "title": "Brake",
+              "members": [
+                {
+                  "name": "김상현",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "윤정근",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "최형준",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "추민균",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "김정욱",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                }
+              ]
+            },
+            {
+              "title": "Steering",
+              "members": [
+                {
+                  "name": "김성욱",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "정의호",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "PT",
+          "groups": [
+            {
+              "title": "Engine",
+              "members": [
+                {
+                  "name": "김강회",
+                  "role": "Engine",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "김태완",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "김윤서",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "이우신",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "장재용",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "장혜원",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "전주은",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "한상민",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                }
+              ]
+            },
+            {
+              "title": "Intake",
+              "members": [
+                {
+                  "name": "이정현",
+                  "role": "Intake",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                }
+              ]
+            },
+            {
+              "title": "Exhaust",
+              "members": [
+                {
+                  "name": "원강식",
+                  "role": "Exhaust",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                }
+              ]
+            },
+            {
+              "title": "Cooling System",
+              "members": [
+                {
+                  "name": "김도원",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                }
+              ]
+            },
+            {
+              "title": "Electronic",
+              "members": [
+                {
+                  "name": "이윤재",
+                  "role": "Electronic",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "김건우",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "이승준",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "곽내영",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "김민경",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "문다빈",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "송승언",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "안효진",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "윤희선",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "임예인",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "전은서",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "고지민",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Media",
+          "groups": [
+            {
+              "title": "",
+              "members": [
+                {
+                  "name": "고동현",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                },
+                {
+                  "name": "최민서",
+                  "role": "",
+                  "email": "",
+                  "photo": "/images/profile/unprofile.jpg"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "year": "2025",
+      "title": "Members 2025",
+      "subtitle": "Tachyon Season 2025.",
+      "teamPhotos": [
+        "/images/profile/2025/2025-1.jpg",
+        "/images/profile/2025/2025-2.jpg",
+        "/images/profile/2025/2025.JPG"
+      ],
+      "sections": []
+    },
+    {
+      "year": "2024",
+      "title": "Members 2024",
+      "subtitle": "Tachyon Season 2024.",
+      "teamPhotos": [
+        "/images/profile/2024/2024_1.jpg",
+        "/images/profile/2024/2024_2.jpg"
+      ],
+      "sections": []
+    }
+  ],
+  "archive": {
+    "title": "Members Archive",
+    "subtitle": "2022-2023 team photos.",
+    "groups": [
+      {
+        "label": "2023",
+        "photos": [
+          "/images/profile/archive/2023-1.jpg",
+          "/images/profile/archive/2023-2.jpg"
+        ]
+      },
+      {
+        "label": "2022",
+        "photos": [
+          "/images/profile/archive/2022.jpg"
+        ]
+      }
+    ]
+  },
+  "ob": {
+    "title": "OB Members",
+    "subtitle": "OB",
+    "teamPhotos": [],
+    "members": [
+      {
+        "name": "이름 입력",
+        "role": "OB",
+        "email": "",
+        "photo": "/images/profile/unprofile.jpg"
+      },
+      {
+        "name": "이름 입력",
+        "role": "OB",
+        "email": "",
+        "photo": "/images/profile/unprofile.jpg"
+      },
+      {
+        "name": "이름 입력",
+        "role": "OB",
+        "email": "",
+        "photo": "/images/profile/unprofile.jpg"
+      },
+      {
+        "name": "이름 입력",
+        "role": "OB",
+        "email": "",
+        "photo": "/images/profile/unprofile.jpg"
+      }
+    ]
+  }
+}

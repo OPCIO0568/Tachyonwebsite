@@ -1,0 +1,112 @@
+{
+  "title": "Sponsors",
+  "description": "저희 타키온 차량 제작과 대회 참가를 지원해 주시는 기업 및 기관입니다.",
+  "heroImage": "/images/sponsors/스폰서 뒷판.jpg",
+  "items": [
+    {
+      "name": "ansys",
+      "url": "https://ansys.com",
+      "logo": "/images/sponsors/Ansys_logo_(2019).svg.png"
+    },
+    {
+      "name": "keyang",
+      "url": "",
+      "logo": "/images/sponsors/keyang.png"
+    },
+    {
+      "name": "bassard",
+      "url": "",
+      "logo": "/images/sponsors/BOSSARD_Logo_Claim_RGB.jpg"
+    },
+    {
+      "name": "플러스테크",
+      "url": "",
+      "logo": ""
+    },
+    {
+      "name": "hexagon",
+      "url": "",
+      "logo": "/images/sponsors/Hexagon-MI-Seasonal-Greeting-2018-04.png"
+    },
+    {
+      "name": "newel 용접",
+      "url": "",
+      "logo": "/images/sponsors/nswel.png"
+    },
+    {
+      "name": "충북대학교 공학교육혁신센터",
+      "url": "",
+      "logo": ""
+    },
+    {
+      "name": "coss 미래자동차 사업단",
+      "url": "",
+      "logo": ""
+    },
+    {
+      "name": "충북 pro메이커센터",
+      "url": "",
+      "logo": ""
+    },
+    {
+      "name": "충북테크노파크",
+      "url": "",
+      "logo": ""
+    },
+    {
+      "name": "대주베어링",
+      "url": "",
+      "logo": ""
+    },
+    {
+      "name": "고창테크",
+      "url": "",
+      "logo": ""
+    },
+    {
+      "name": "만년볼트",
+      "url": "",
+      "logo": ""
+    },
+    {
+      "name": "청우정공",
+      "url": "",
+      "logo": ""
+    },
+    {
+      "name": "misumi",
+      "url": "",
+      "logo": "/images/sponsors/MiSUMi-logo@4x.png"
+    },
+    {
+      "name": "monster energy",
+      "url": "",
+      "logo": ""
+    },
+    {
+      "name": "off-on factory - race garage",
+      "url": "",
+      "logo": ""
+    },
+    {
+      "name": "motografix",
+      "url": "",
+      "logo": ""
+    },
+    {
+      "name": "woosuk (테련형)",
+      "url": "",
+      "logo": "/images/sponsors/woosuck.png"
+    },
+    {
+      "name": "파인드몰드",
+      "url": "",
+      "logo": ""
+    },
+    {
+      "name": "luck#",
+      "url": "",
+      "logo": ""
+    }
+  ]
+}

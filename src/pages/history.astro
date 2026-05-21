@@ -1,0 +1,129 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import fallbackHistoryData from "../../data/history.json";
+---
+
+<BaseLayout title={fallbackHistoryData.title} description={fallbackHistoryData.description}>
+  <section class="section">
+    <div class="container" id="history-app">
+      <h2 class="section-title">History</h2>
+      <p>차량 정보를 불러오는 중입니다.</p>
+    </div>
+  </section>
+
+  <script define:vars={{ fallbackHistoryData }}>
+    const app = document.getElementById("history-app");
+
+    const escapeHtml = (value) =>
+      String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+    const normalizeHistory = (data) => ({
+      title: data?.title || "Our Cars",
+      description: data?.description || "",
+      vehicleSectionTitle: data?.vehicleSectionTitle || "History",
+      groups: Array.isArray(data?.groups) ? data.groups : [],
+      awards: {
+        title: data?.awards?.title || "역대 수상 내역",
+        items: Array.isArray(data?.awards?.items) ? data.awards.items : [],
+      },
+    });
+
+    const vehicleCard = (vehicle) => {
+      const image = vehicle.image
+        ? `<img src="${escapeHtml(vehicle.image)}" alt="${escapeHtml(vehicle.alt || vehicle.name)}">`
+        : "";
+      const year = vehicle.year ? `<p class="history-card-year">제작: ${escapeHtml(vehicle.year)}</p>` : "";
+      const competition = vehicle.competition
+        ? `<p class="history-card-result">참여 대회: ${escapeHtml(vehicle.competition)}</p>`
+        : "";
+      const award = vehicle.award ? `<p class="history-card-result">수상: ${escapeHtml(vehicle.award)}</p>` : "";
+
+      return `
+        <article class="history-card">
+          ${image}
+          <div class="history-card-body">
+            <h4 class="history-card-title">${escapeHtml(vehicle.name)}</h4>
+            ${year}
+            ${competition}
+            ${award}
+          </div>
+        </article>
+      `;
+    };
+
+    const historyGroup = (group) => `
+      <div class="history-group">
+        <h3 class="history-group-title">${escapeHtml(group.title)}</h3>
+        <div class="history-cards">${(group.vehicles || []).map(vehicleCard).join("")}</div>
+      </div>
+    `;
+
+    const awardRow = (item) => `
+      <tr>
+        <td>${escapeHtml(item.year)}</td>
+        <td>${escapeHtml(item.competition)}</td>
+        <td>${escapeHtml(item.vehicle)}</td>
+        <td>${escapeHtml(item.result)}</td>
+      </tr>
+    `;
+
+    const render = (data) => {
+      const history = normalizeHistory(data);
+      document.title = history.title;
+      document.querySelector('meta[name="description"]')?.setAttribute("content", history.description);
+
+      app.innerHTML = `
+        <h2 class="section-title">${escapeHtml(history.vehicleSectionTitle)}</h2>
+        ${history.groups.map(historyGroup).join("")}
+      `;
+
+      const awardsSection = document.getElementById("awards-app");
+      if (awardsSection) {
+        awardsSection.innerHTML = `
+          <h2 class="section-title">${escapeHtml(history.awards.title)}</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>연도</th>
+                  <th>대회</th>
+                  <th>차량</th>
+                  <th>성과</th>
+                </tr>
+              </thead>
+              <tbody>${history.awards.items.map(awardRow).join("")}</tbody>
+            </table>
+          </div>
+        `;
+      }
+    };
+
+    const loadHistory = async () => {
+      try {
+        const response = await fetch("/api/history", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("Failed to load history");
+        }
+        return await response.json();
+      } catch {
+        return fallbackHistoryData;
+      }
+    };
+
+    const start = () => loadHistory().then(render).catch(() => render(fallbackHistoryData));
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", start, { once: true });
+    } else {
+      start();
+    }
+  </script>
+
+  <section class="section" id="awards">
+    <div class="container" id="awards-app"></div>
+  </section>
+</BaseLayout>

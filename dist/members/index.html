@@ -1,0 +1,237 @@
+<!DOCTYPE html><html lang="ko"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Tachyon 멤버 소개"><link rel="icon" type="image/svg+xml" href="/images/tachyon-logo-link.png"><title>Members</title><link rel="stylesheet" href="/_astro/admin.Dhfe7y8M.css"></head> <body> <header class="site-header"> <div class="container header-inner"> <a class="brand" href="/"> <img class="brand-logo" src="/images/tachyon-logo2.png" alt="Tachyon logo"> <span>Tachyon</span> </a> <div class="header-actions"> <nav class="nav-links"> <a href="/">Home</a> <a href="/intro">About US</a> <a href="/history">Our Cars</a> <a href="/members">Members</a> <a href="/sponsors">Sponsors</a> <a href="/contact">Contact US</a>  </nav> </div> </div> </header> <main>  <section class="section"> <div class="container"> <div id="members-app" class="members-app"> <h1 class="section-title">Members</h1> <p class="section-subtitle">멤버 정보를 불러오는 중입니다.</p> </div> </div> </section> <script>(function(){const fallbackMembersData = {"seasons":[{"year":"2026","title":"Members 2026","subtitle":"Tachyon Season 2026.","teamPhotos":[],"sections":[{"title":"Leadership","groups":[{"title":"","members":[{"name":"1111","role":"회장","email":"","photo":"/images/profile/unprofile.jpg"},{"name":"이름 입력","role":"PM","email":"","photo":"/images/profile/unprofile.jpg"}]}]},{"title":"Aero","groups":[{"title":"Aero Body","members":[{"name":"이름 입력","role":"Aero Body","email":"","photo":"/images/profile/unprofile.jpg"}]},{"title":"Aero Parts","members":[{"name":"이름 입력","role":"Aero Parts","email":"","photo":"/images/profile/unprofile.jpg"}]}]},{"title":"Chassis","groups":[{"title":"Frame","members":[{"name":"이름 입력","role":"Frame","email":"","photo":"/images/profile/unprofile.jpg"}]},{"title":"Suspension","members":[{"name":"이름 입력","role":"Geometry","email":"","photo":"/images/profile/unprofile.jpg"},{"name":"이름 입력","role":"Component","email":"","photo":"/images/profile/unprofile.jpg"}]},{"title":"Brake","members":[{"name":"이름 입력","role":"Brake","email":"","photo":"/images/profile/unprofile.jpg"}]}]},{"title":"PT","groups":[{"title":"Engine","members":[{"name":"이름 입력","role":"Engine","email":"","photo":"/images/profile/unprofile.jpg"}]},{"title":"Intake","members":[{"name":"이름 입력","role":"Intake","email":"","photo":"/images/profile/unprofile.jpg"}]},{"title":"Exhaust","members":[{"name":"이름 입력","role":"Exhaust","email":"","photo":"/images/profile/unprofile.jpg"}]},{"title":"Electronic","members":[{"name":"이름 입력","role":"Electronic","email":"","photo":"/images/profile/unprofile.jpg"}]}]}]},{"year":"2025","title":"Members 2025","subtitle":"Tachyon Season 2025.","teamPhotos":["/images/profile/2025/2025-1.jpg","/images/profile/2025/2025-2.jpg","/images/profile/2025/2025.JPG"],"sections":[]},{"year":"2024","title":"Members 2024","subtitle":"Tachyon Season 2024.","teamPhotos":["/images/profile/2024/2024_1.jpg","/images/profile/2024/2024_2.jpg"],"sections":[]}],"archive":{"title":"Members Archive","subtitle":"2022-2023 team photos.","groups":[{"label":"2023","photos":["/images/profile/archive/2023-1.jpg","/images/profile/archive/2023-2.jpg"]},{"label":"2022","photos":["/images/profile/archive/2022.jpg"]}]},"ob":{"title":"OB Members","subtitle":"OB","teamPhotos":[],"members":[{"name":"이름 입력","role":"OB","email":"","photo":"/images/profile/unprofile.jpg"},{"name":"이름 입력","role":"OB","email":"","photo":"/images/profile/unprofile.jpg"},{"name":"이름 입력","role":"OB","email":"","photo":"/images/profile/unprofile.jpg"},{"name":"이름 입력","role":"OB","email":"","photo":"/images/profile/unprofile.jpg"}]}};
+
+    const app = document.getElementById("members-app");
+    const fallbackPhoto = "/images/profile/unprofile.jpg";
+
+    const escapeHtml = (value) =>
+      String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+    const normalizeEmail = (email) => String(email ?? "").trim();
+
+    const sortSeasons = (seasons) =>
+      [...(seasons ?? [])].sort((a, b) => Number(b.year) - Number(a.year));
+
+    const getInitialView = (data) => {
+      const params = new URLSearchParams(window.location.search);
+      const pathMatch = window.location.pathname.match(/^\/members\/([^/]+)\/?$/);
+      const pathView = pathMatch?.[1];
+      const year = pathView || params.get("year");
+
+      if (year && data.seasons?.some((season) => season.year === year)) {
+        return { type: "season", year };
+      }
+      if (pathView === "archive" || params.get("view") === "archive") {
+        return { type: "archive" };
+      }
+      if (pathView === "ob" || params.get("view") === "ob") {
+        return { type: "ob" };
+      }
+      return { type: "season", year: sortSeasons(data.seasons)[0]?.year };
+    };
+
+    const renderTabs = (data, active) => {
+      const seasonTabs = sortSeasons(data.seasons)
+        .map((season) => {
+          const activeClass = active.type === "season" && active.year === season.year ? " is-active" : "";
+          return `<button class="member-tab${activeClass}" type="button" data-year="${escapeHtml(season.year)}">${escapeHtml(season.year)}</button>`;
+        })
+        .join("");
+
+      const archiveClass = active.type === "archive" ? " is-active" : "";
+      const obClass = active.type === "ob" ? " is-active" : "";
+
+      return `
+        <div class="member-tabs" role="tablist">
+          ${seasonTabs}
+          <button class="member-tab${archiveClass}" type="button" data-view="archive">Archive</button>
+          <button class="member-tab${obClass}" type="button" data-view="ob">OB</button>
+        </div>
+      `;
+    };
+
+    const renderTeamPhotos = (photos, alt) => {
+      if (!photos?.length) {
+        return "";
+      }
+
+      return photos
+        .map(
+          (photo) => `
+            <div class="member-hero">
+              <img class="member-hero-photo" src="${escapeHtml(photo)}" alt="${escapeHtml(alt)}">
+            </div>
+          `,
+        )
+        .join("");
+    };
+
+    const renderMember = (member) => {
+      const email = normalizeEmail(member.email);
+      const emailLink = email
+        ? `<a class="member-link" href="mailto:${escapeHtml(email)}">Email</a>`
+        : "";
+
+      return `
+        <article class="member-card">
+          <img class="member-photo" src="${escapeHtml(member.photo || fallbackPhoto)}" alt="${escapeHtml(member.name || member.role || "Member")}">
+          <h3 class="member-name">${escapeHtml(member.name || "이름 입력")}</h3>
+          <p class="member-role">${escapeHtml(member.role || "")}</p>
+          ${emailLink}
+        </article>
+      `;
+    };
+
+    const renderSections = (sections) => {
+      if (!sections?.length) {
+        return "";
+      }
+
+      return sections
+        .map((section) => {
+          const groups = (section.groups ?? [])
+            .map((group) => {
+              const title = group.title
+                ? `<h3 class="member-subtitle">${escapeHtml(group.title)}</h3>`
+                : "";
+              const members = (group.members ?? []).map(renderMember).join("");
+              return `
+                ${title}
+                <div class="member-grid">${members}</div>
+              `;
+            })
+            .join("");
+
+          return `
+            <div class="member-section">
+              <h2 class="member-section-title">${escapeHtml(section.title)}</h2>
+              ${groups}
+            </div>
+          `;
+        })
+        .join("");
+    };
+
+    const renderSeason = (data, year) => {
+      const season = data.seasons?.find((item) => item.year === year) ?? sortSeasons(data.seasons)[0];
+      if (!season) {
+        return `
+          <h1 class="section-title">Members</h1>
+          <p class="section-subtitle">등록된 시즌이 없습니다.</p>
+        `;
+      }
+
+      return `
+        <h1 class="section-title">${escapeHtml(season.title || `Members ${season.year}`)}</h1>
+        <p class="section-subtitle">${escapeHtml(season.subtitle || "")}</p>
+        ${renderTabs(data, { type: "season", year: season.year })}
+        ${renderTeamPhotos(season.teamPhotos, `Tachyon Team ${season.year}`)}
+        ${renderSections(season.sections)}
+      `;
+    };
+
+    const renderArchive = (data) => {
+      const groups = data.archive?.groups ?? [];
+      const archiveGroups = groups
+        .map(
+          (group) => `
+            <h2 class="member-section-title">${escapeHtml(group.label)}</h2>
+            ${renderTeamPhotos(group.photos, `Tachyon Team ${group.label}`)}
+          `,
+        )
+        .join("");
+
+      return `
+        <h1 class="section-title">${escapeHtml(data.archive?.title || "Members Archive")}</h1>
+        <p class="section-subtitle">${escapeHtml(data.archive?.subtitle || "")}</p>
+        ${renderTabs(data, { type: "archive" })}
+        ${archiveGroups}
+      `;
+    };
+
+    const renderOb = (data) => `
+      <h1 class="section-title">${escapeHtml(data.ob?.title || "OB Members")}</h1>
+      <p class="section-subtitle">${escapeHtml(data.ob?.subtitle || "")}</p>
+      ${renderTabs(data, { type: "ob" })}
+      ${renderTeamPhotos(data.ob?.teamPhotos, "Tachyon OB Team")}
+      <div class="member-grid">${(data.ob?.members ?? []).map(renderMember).join("")}</div>
+    `;
+
+    const render = (data, view) => {
+      if (view.type === "archive") {
+        app.innerHTML = renderArchive(data);
+      } else if (view.type === "ob") {
+        app.innerHTML = renderOb(data);
+      } else {
+        app.innerHTML = renderSeason(data, view.year);
+      }
+    };
+
+    const setUrl = (view) => {
+      const url = new URL(window.location.href);
+      url.search = "";
+      if (view.type === "season" && view.year) {
+        url.pathname = `/members/${view.year}`;
+      } else if (view.type === "archive" || view.type === "ob") {
+        url.pathname = `/members/${view.type}`;
+      } else {
+        url.pathname = "/members";
+      }
+      window.history.pushState(view, "", url);
+    };
+
+    const loadMembersData = async () => {
+      try {
+        const response = await fetch("/api/members", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("Failed to load members");
+        }
+        return await response.json();
+      } catch {
+        return fallbackMembersData;
+      }
+    };
+
+    const init = async () => {
+      try {
+        const data = await loadMembersData();
+        let active = getInitialView(data);
+        render(data, active);
+
+        app.addEventListener("click", (event) => {
+          const tab = event.target.closest(".member-tab");
+          if (!tab) {
+            return;
+          }
+
+          active = tab.dataset.year
+            ? { type: "season", year: tab.dataset.year }
+            : { type: tab.dataset.view };
+          render(data, active);
+          setUrl(active);
+        });
+
+        window.addEventListener("popstate", () => {
+          active = getInitialView(data);
+          render(data, active);
+        });
+      } catch {
+        app.innerHTML = `
+          <h1 class="section-title">Members</h1>
+          <p class="section-subtitle">멤버 정보를 표시하지 못했습니다. 데이터 형식을 확인해주세요.</p>
+        `;
+      }
+    };
+
+    init();
+  })();</script>  </main> <footer class="site-footer"> <div class="container footer-inner"> <span>ⓒ 2026 Tachyon</span> <div class="footer-social"> <a href="https://www.instagram.com/cbnu_tachyon/"> <svg viewBox="0 0 24 24" aria-hidden="true"> <path d="M7.5 2C4.462 2 2 4.462 2 7.5v9C2 19.538 4.462 22 7.5 22h9c3.038 0 5.5-2.462 5.5-5.5v-9C22 4.462 19.538 2 16.5 2h-9zm0 2h9C18.43 4 20 5.57 20 7.5v9c0 1.93-1.57 3.5-3.5 3.5h-9C5.57 20 4 18.43 4 16.5v-9C4 5.57 5.57 4 7.5 4zm9.25 2a1.25 1.25 0 100 2.5 1.25 1.25 0 000-2.5zM12 7a5 5 0 100 10 5 5 0 000-10zm0 2a3 3 0 110 6 3 3 0 010-6z"></path> </svg>
+Instagram
+</a> <a href="https://cafe.naver.com/tachyonformula/"> <svg viewBox="0 0 24 24" aria-hidden="true"> <path d="M2 3.6h5.2l4.6 6.6V3.6H22v16.8h-5.2l-4.6-6.6v6.6H2z"></path> </svg>
+Naver Cafe
+</a> <a href="http://www.youtube.com/@CBNUTACHYON/"> <svg viewBox="0 0 24 24" aria-hidden="true"> <path d="M21.58 7.19a2.75 2.75 0 00-1.94-1.94C17.76 4.5 12 4.5 12 4.5s-5.76 0-7.64.75a2.75 2.75 0 00-1.94 1.94A28.45 28.45 0 002 12a28.45 28.45 0 00.42 4.81 2.75 2.75 0 001.94 1.94C6.24 19.5 12 19.5 12 19.5s5.76 0 7.64-.75a2.75 2.75 0 001.94-1.94A28.45 28.45 0 0022 12a28.45 28.45 0 00-.42-4.81zM10 15.27V8.73L15.5 12 10 15.27z"></path> </svg>
+YouTube
+</a> </div> </div> </footer> </body></html>

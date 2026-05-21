@@ -1,0 +1,16 @@
+{
+  "name": "astro-site",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "prebuild": "node -e \"require('node:fs').rmSync('node_modules/.vite',{recursive:true,force:true})\"",
+    "build": "astro build",
+    "preview": "astro preview",
+    "serve": "node server/server.mjs",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "astro": "^5.16.6"
+  }
+}

@@ -1,0 +1,92 @@
+<!DOCTYPE html><html lang="ko"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Tachyon 연락처와 소셜 링크"><link rel="icon" type="image/svg+xml" href="/images/tachyon-logo-link.png"><title>Contact Us</title><link rel="stylesheet" href="/_astro/admin.Dhfe7y8M.css"></head> <body> <header class="site-header"> <div class="container header-inner"> <a class="brand" href="/"> <img class="brand-logo" src="/images/tachyon-logo2.png" alt="Tachyon logo"> <span>Tachyon</span> </a> <div class="header-actions"> <nav class="nav-links"> <a href="/">Home</a> <a href="/intro">About US</a> <a href="/history">Our Cars</a> <a href="/members">Members</a> <a href="/sponsors">Sponsors</a> <a href="/contact">Contact US</a>  </nav> </div> </div> </header> <main>  <section class="section"> <div class="container" id="contact-app"> <h1 class="section-title">Contact Us</h1> <p>연락처 정보를 불러오는 중입니다.</p> </div> </section> <script>(function(){const fallbackContactData = {"title":"Contact Us","subtitle":"","heroImage":"/images/banner.jpg","contacts":[{"role":"회장","name":"조진우","phone":"010-0000-0000","email":"president@example.com"},{"role":"PM","name":"이름 입력","phone":"010-0000-0000","email":"pm@example.com"},{"role":"Email","name":"이름 입력","phone":"010-0000-0000","email":"tachyon@example.com"}],"socials":[{"name":"Instagram","url":"https://www.instagram.com/cbnu_tachyon/","image":"/images/photo/img3.jpg"},{"name":"YouTube","url":"http://www.youtube.com/@CBNUTACHYON/","image":"/images/photo/img4.jpg"},{"name":"Naver Cafe","url":"https://cafe.naver.com/tachyonformula/","image":"/images/photo/img5.jpg"}]};
+
+    const app = document.getElementById("contact-app");
+
+    const escapeHtml = (value) =>
+      String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+    const normalizeContact = (data) => ({
+      title: data?.title || "Contact Us",
+      subtitle: data?.subtitle || "",
+      heroImage: data?.heroImage || "",
+      contacts: Array.isArray(data?.contacts) ? data.contacts : [],
+      socials: Array.isArray(data?.socials) ? data.socials : [],
+    });
+
+    const contactCard = (contact) => {
+      const phone = contact.phone
+        ? `<p class="contact-info-detail">${escapeHtml(contact.phone)}</p>`
+        : "";
+      const email = contact.email
+        ? `<p class="contact-info-detail"><a href="mailto:${escapeHtml(contact.email)}">${escapeHtml(contact.email)}</a></p>`
+        : "";
+
+      return `
+        <div class="contact-info-card">
+          <h3>${escapeHtml(contact.role)}</h3>
+          <p class="contact-info-name">${escapeHtml(contact.name)}</p>
+          ${phone}
+          ${email}
+        </div>
+      `;
+    };
+
+    const socialCard = (social) => `
+      <a class="contact-social-card" href="${escapeHtml(social.url || "#")}">
+        ${social.image ? `<img src="${escapeHtml(social.image)}" alt="${escapeHtml(social.name)}">` : ""}
+        <span>${escapeHtml(social.name)}</span>
+      </a>
+    `;
+
+    const render = (data) => {
+      const contact = normalizeContact(data);
+      const subtitle = contact.subtitle ? `<p class="section-subtitle">${escapeHtml(contact.subtitle)}</p>` : "";
+      const hero = contact.heroImage
+        ? `
+          <div class="contact-hero">
+            <img src="${escapeHtml(contact.heroImage)}" alt="Tachyon Team">
+          </div>
+        `
+        : "";
+
+      app.innerHTML = `
+        <h1 class="section-title">${escapeHtml(contact.title)}</h1>
+        ${subtitle}
+        ${hero}
+        <div class="contact-info-grid">${contact.contacts.map(contactCard).join("")}</div>
+        <div class="contact-social-grid">${contact.socials.map(socialCard).join("")}</div>
+      `;
+    };
+
+    const loadContact = async () => {
+      try {
+        const response = await fetch("/api/contact", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("Failed to load contact");
+        }
+        return await response.json();
+      } catch {
+        return fallbackContactData;
+      }
+    };
+
+    loadContact()
+      .then(render)
+      .catch(() => {
+        app.innerHTML = `
+          <h1 class="section-title">Contact Us</h1>
+          <p>연락처 정보를 표시하지 못했습니다. 데이터 형식을 확인해주세요.</p>
+        `;
+      });
+  })();</script>  </main> <footer class="site-footer"> <div class="container footer-inner"> <span>ⓒ 2026 Tachyon</span> <div class="footer-social"> <a href="https://www.instagram.com/cbnu_tachyon/"> <svg viewBox="0 0 24 24" aria-hidden="true"> <path d="M7.5 2C4.462 2 2 4.462 2 7.5v9C2 19.538 4.462 22 7.5 22h9c3.038 0 5.5-2.462 5.5-5.5v-9C22 4.462 19.538 2 16.5 2h-9zm0 2h9C18.43 4 20 5.57 20 7.5v9c0 1.93-1.57 3.5-3.5 3.5h-9C5.57 20 4 18.43 4 16.5v-9C4 5.57 5.57 4 7.5 4zm9.25 2a1.25 1.25 0 100 2.5 1.25 1.25 0 000-2.5zM12 7a5 5 0 100 10 5 5 0 000-10zm0 2a3 3 0 110 6 3 3 0 010-6z"></path> </svg>
+Instagram
+</a> <a href="https://cafe.naver.com/tachyonformula/"> <svg viewBox="0 0 24 24" aria-hidden="true"> <path d="M2 3.6h5.2l4.6 6.6V3.6H22v16.8h-5.2l-4.6-6.6v6.6H2z"></path> </svg>
+Naver Cafe
+</a> <a href="http://www.youtube.com/@CBNUTACHYON/"> <svg viewBox="0 0 24 24" aria-hidden="true"> <path d="M21.58 7.19a2.75 2.75 0 00-1.94-1.94C17.76 4.5 12 4.5 12 4.5s-5.76 0-7.64.75a2.75 2.75 0 00-1.94 1.94A28.45 28.45 0 002 12a28.45 28.45 0 00.42 4.81 2.75 2.75 0 001.94 1.94C6.24 19.5 12 19.5 12 19.5s5.76 0 7.64-.75a2.75 2.75 0 001.94-1.94A28.45 28.45 0 0022 12a28.45 28.45 0 00-.42-4.81zM10 15.27V8.73L15.5 12 10 15.27z"></path> </svg>
+YouTube
+</a> </div> </div> </footer> </body></html>
