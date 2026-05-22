@@ -1,10 +1,12 @@
 import { createServer } from "node:http";
 import { createReadStream } from "node:fs";
-import { access, mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
+import { cp, access, mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Readable } from "node:stream";
 import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import sharp from "sharp";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
@@ -15,6 +17,7 @@ const dataDir = process.env.TACHYON_DATA_DIR
 const uploadDir = process.env.TACHYON_UPLOAD_DIR
   ? path.resolve(process.env.TACHYON_UPLOAD_DIR)
   : path.join(rootDir, "uploads");
+const backupDir = path.join(rootDir, "backups");
 const homeFile = path.join(dataDir, "home.json");
 const homeEnFile = path.join(dataDir, "home-en.json");
 const introFile = path.join(dataDir, "intro.json");
@@ -35,6 +38,8 @@ const sessionSecret = process.env.TACHYON_SESSION_SECRET || randomBytes(32).toSt
 const sessionCookie = "tachyon_admin";
 const maxJsonSize = 2 * 1024 * 1024;
 const maxUploadSize = 8 * 1024 * 1024;
+const optimizedImageMaxWidth = 1600;
+const optimizedImageQuality = 78;
 const minPasswordLength = 8;
 let visitWriteQueue = Promise.resolve();
 
@@ -249,6 +254,100 @@ const sendText = (res, statusCode, text) => {
 const redirect = (res, location) => {
   res.writeHead(302, { location });
   res.end();
+};
+
+const backupTimestamp = () => new Date().toISOString().replace(/[:.]/g, "-");
+
+const copyDirectoryIfExists = async (source, target) => {
+  if (!(await fileExists(source))) {
+    return false;
+  }
+  await cp(source, target, { recursive: true, force: true });
+  return true;
+};
+
+const createRuntimeBackup = async () => {
+  const targetDir = path.join(backupDir, backupTimestamp());
+  await ensureDir(targetDir);
+
+  const copied = [];
+  if (await copyDirectoryIfExists(dataDir, path.join(targetDir, "data"))) {
+    copied.push("data");
+  }
+  if (await copyDirectoryIfExists(uploadDir, path.join(targetDir, "uploads"))) {
+    copied.push("uploads");
+  }
+
+  return {
+    ok: true,
+    message: "백업을 완료했습니다.",
+    path: path.relative(rootDir, targetDir).replaceAll(path.sep, "/"),
+    copied,
+  };
+};
+
+const limitCommandOutput = (value) => {
+  const text = String(value || "");
+  return text.length > 12000 ? text.slice(-12000) : text;
+};
+
+const runCommand = (command, args) =>
+  new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd: rootDir,
+      shell: false,
+      env: {
+        ...process.env,
+        GIT_TERMINAL_PROMPT: "0",
+      },
+    });
+    let stdout = "";
+    let stderr = "";
+
+    child.stdout?.on("data", (chunk) => {
+      stdout = limitCommandOutput(stdout + chunk.toString());
+    });
+    child.stderr?.on("data", (chunk) => {
+      stderr = limitCommandOutput(stderr + chunk.toString());
+    });
+    child.on("error", reject);
+    child.on("close", (code) => {
+      const result = { code, stdout, stderr };
+      if (code === 0) {
+        resolve(result);
+        return;
+      }
+      const error = new Error(`${command} ${args.join(" ")} 실패`);
+      Object.assign(error, result);
+      reject(error);
+    });
+  });
+
+const runAdminServerTask = async (task) => {
+  const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+  const gitCommand = process.platform === "win32" ? "git.exe" : "git";
+
+  if (task === "backup") {
+    return createRuntimeBackup();
+  }
+
+  if (task === "pull") {
+    const result = await runCommand(gitCommand, ["pull", "origin", "master"]);
+    return { ok: true, message: "GitHub pull을 완료했습니다.", ...result };
+  }
+
+  if (task === "install-build") {
+    const install = await runCommand(npmCommand, ["install"]);
+    const build = await runCommand(npmCommand, ["run", "build"]);
+    return {
+      ok: true,
+      message: "npm install과 build를 완료했습니다.",
+      stdout: [install.stdout, build.stdout].filter(Boolean).join("\n"),
+      stderr: [install.stderr, build.stderr].filter(Boolean).join("\n"),
+    };
+  }
+
+  throw new Error("지원하지 않는 서버 작업입니다.");
 };
 
 const hashValue = (value) => createHash("sha256").update(String(value)).digest();
@@ -677,6 +776,9 @@ const galleryColumnCount = 3;
 const normalizeGalleryGridRows = (value) => Math.max(1, Math.min(24, Number(value) || 6));
 
 const galleryBlockCells = (value) => {
+  if (String(value) === "2v") {
+    return [0, 3];
+  }
   const blocks = Number(value) || 1;
   if (blocks === 2) {
     return [0, 1];
@@ -691,6 +793,9 @@ const galleryBlockCells = (value) => {
 };
 
 const normalizeGallerySize = (size) => {
+  if (String(size) === "2v") {
+    return "2v";
+  }
   const value = Number(size) || 1;
   return [1, 2, 4, 6].includes(value) ? value : 1;
 };
@@ -746,9 +851,10 @@ const normalizeGalleryData = (data = {}) => {
   const usedCells = new Set();
   const items = legacyGalleryItems(data)
     .map((item, index) => {
-      const cells = item?.placed === false ? [] : normalizeGalleryCells(item?.cells, gridRows, item?.blocks).filter((cell) => !usedCells.has(cell));
+      const cells = item?.placed === false ? [] : normalizeGalleryCells(item?.cells, gridRows, item?.blocks || item?.size).filter((cell) => !usedCells.has(cell));
       cells.forEach((cell) => usedCells.add(cell));
       return {
+        id: Number(item?.id) || index + 1,
         title: String(item?.title || item?.caption || `Photo ${index + 1}`).trim(),
         image: String(item?.image || "").trim(),
         alt: String(item?.alt || item?.title || "").trim(),
@@ -901,6 +1007,23 @@ const sanitizeSegment = (value, fallback) => {
   return sanitized || fallback;
 };
 
+const optimizeImage = async (buffer) => {
+  const image = sharp(buffer, { animated: false, limitInputPixels: 80_000_000 }).rotate();
+  const metadata = await image.metadata();
+  const shouldResize = Number(metadata.width || 0) > optimizedImageMaxWidth;
+
+  return image
+    .resize({
+      width: shouldResize ? optimizedImageMaxWidth : undefined,
+      withoutEnlargement: true,
+    })
+    .webp({
+      quality: optimizedImageQuality,
+      effort: 5,
+    })
+    .toBuffer();
+};
+
 const uploadImage = async (req, res) => {
   if (!requireAdmin(req, res)) {
     return;
@@ -933,22 +1056,20 @@ const uploadImage = async (req, res) => {
     return;
   }
 
-  const originalExt = path.extname(file.name || "").toLowerCase();
-  const allowedExts = new Set([".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"]);
-  const mimeExt = {
-    "image/jpeg": ".jpg",
-    "image/png": ".png",
-    "image/webp": ".webp",
-    "image/gif": ".gif",
-    "image/bmp": ".bmp",
-  };
-  const ext = allowedExts.has(originalExt) ? originalExt : mimeExt[file.type] || ".jpg";
-  const filename = `${Date.now()}-${randomBytes(5).toString("hex")}${ext}`;
+  let optimizedBuffer;
+  try {
+    optimizedBuffer = await optimizeImage(buffer);
+  } catch {
+    sendJson(res, 400, { error: "이미지를 처리하지 못했습니다. JPG, PNG, WebP, BMP 파일을 사용해주세요." });
+    return;
+  }
+
+  const filename = `${Date.now()}-${randomBytes(5).toString("hex")}.webp`;
   const targetDir = path.join(uploadDir, category, bucket);
   const targetFile = path.join(targetDir, filename);
 
   await ensureDir(targetDir);
-  await writeFile(targetFile, buffer);
+  await writeFile(targetFile, optimizedBuffer);
 
   sendJson(res, 201, {
     path: `/uploads/${encodeURIComponent(category)}/${encodeURIComponent(bucket)}/${encodeURIComponent(filename)}`,
@@ -1076,8 +1197,10 @@ const serveStatic = async (req, res, url) => {
       }
 
       const ext = path.extname(candidate).toLowerCase();
+      const cacheControl = ext === ".html" ? "no-cache" : "public, max-age=31536000, immutable";
       res.writeHead(200, {
         "content-type": mimeTypes.get(ext) || "application/octet-stream",
+        "cache-control": cacheControl,
       });
       if (shouldCountPageView(req, pathname, candidate)) {
         recordPageView(pathname);
@@ -1156,6 +1279,41 @@ const handleApi = async (req, res, url) => {
       return true;
     }
     sendJson(res, 200, await readVisits());
+    return true;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/admin/server-task") {
+    if (!requireAdmin(req, res)) {
+      return true;
+    }
+
+    const body = await readJsonBody(req);
+    const task = String(body.task || "");
+    const allowedTasks = new Set(["backup", "pull", "install-build", "restart"]);
+
+    if (!allowedTasks.has(task)) {
+      sendJson(res, 400, { error: "지원하지 않는 서버 작업입니다." });
+      return true;
+    }
+
+    if (task === "restart") {
+      sendJson(res, 200, {
+        ok: true,
+        message: "재시작 요청을 보냈습니다. systemd가 실행 중이면 잠시 후 다시 켜집니다.",
+      });
+      setTimeout(() => process.exit(0), 500);
+      return true;
+    }
+
+    try {
+      sendJson(res, 200, await runAdminServerTask(task));
+    } catch (error) {
+      sendJson(res, 500, {
+        error: error.message || "서버 작업에 실패했습니다.",
+        stdout: error.stdout || "",
+        stderr: error.stderr || "",
+      });
+    }
     return true;
   }
 

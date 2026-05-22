@@ -11,20 +11,20 @@
     {
       "role": "회장",
       "name": "조진우",
-      "phone": "010-3563-6742",
-      "email": "whwls10@naver.com"
+      "phone": "",
+      "email": ""
     },
     {
       "role": "PM",
       "name": "이정윤",
-      "phone": "010-2942-2910",
-      "email": "babitu@naver.com"
+      "phone": "",
+      "email": ""
     },
     {
       "role": "마케팅 매니저",
       "name": "고동현",
-      "phone": "010-0000-0000",
-      "email": "tachyon@example.com"
+      "phone": "",
+      "email": ""
     }
   ],
   "socials": [

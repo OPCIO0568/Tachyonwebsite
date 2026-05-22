@@ -16,12 +16,14 @@ server.error.log
 
 # runtime uploads
 uploads/
+backups/
 
 
 # environment variables
 .env
 .env.production
 data/auth.json
+data/visits.json
 
 # macOS-specific files
 .DS_Store

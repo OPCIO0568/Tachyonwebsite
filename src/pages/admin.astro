@@ -50,6 +50,22 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           </div>
         </form>
 
+        <div class="admin-subpanel admin-server-panel">
+          <div class="admin-subpanel-header">
+            <h3>서버 관리</h3>
+          </div>
+          <p class="admin-server-note">
+            서버에서 실행되는 작업입니다. GitHub pull 전에 백업을 먼저 실행하는 것을 권장합니다.
+          </p>
+          <div class="admin-server-actions">
+            <button class="admin-button" type="button" data-action="server-task" data-server-task="backup">백업</button>
+            <button class="admin-button" type="button" data-action="server-task" data-server-task="pull">GitHub Pull</button>
+            <button class="admin-button" type="button" data-action="server-task" data-server-task="install-build">npm install + build</button>
+            <button class="admin-button admin-button-primary" type="button" data-action="server-task" data-server-task="restart">Restart</button>
+          </div>
+          <pre id="admin-server-output" class="admin-server-output" aria-live="polite"></pre>
+        </div>
+
         <div class="admin-subpanel admin-visit-panel">
           <div class="admin-subpanel-header">
             <h3>조회수 통계</h3>
@@ -89,6 +105,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     const adminVisitSummary = document.getElementById("admin-visit-summary");
     const adminVisitPageSelect = document.getElementById("admin-visit-page-select");
     const adminVisitChart = document.getElementById("admin-visit-chart");
+    const adminServerOutput = document.getElementById("admin-server-output");
     const adminPageGrid = document.getElementById("admin-page-grid");
     const adminPasswordForm = document.getElementById("admin-password-form");
     const currentPasswordInput = document.getElementById("current-password");
@@ -115,6 +132,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     let selectedYear = "";
     let selectedVisitRoute = "all";
     let selectedGalleryItemIndex = 0;
+    let selectedGalleryPage = 1;
+    let selectedGalleryFilter = "all";
 
     const defaultPhoto = "/images/profile/unprofile.jpg";
 
@@ -141,6 +160,74 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         throw new Error(data.error || "요청을 처리하지 못했습니다.");
       }
       return data;
+    };
+
+    const serverTaskLabels = {
+      backup: "백업",
+      pull: "GitHub Pull",
+      "install-build": "npm install + build",
+      restart: "Restart",
+    };
+
+    const serverTaskConfirmMessages = {
+      pull: "GitHub pull을 실행할까요? 서버의 로컬 변경사항이 있으면 실패할 수 있습니다.",
+      "install-build": "npm install과 build를 실행할까요? 완료까지 시간이 걸릴 수 있습니다.",
+      restart: "서버를 재시작할까요? systemd로 실행 중이어야 자동으로 다시 켜집니다.",
+    };
+
+    const formatServerTaskOutput = (task, data = {}) => {
+      const lines = [`작업: ${serverTaskLabels[task] || task}`];
+      if (data.message) {
+        lines.push(data.message);
+      }
+      if (data.path) {
+        lines.push(`백업 위치: ${data.path}`);
+      }
+      if (Array.isArray(data.copied) && data.copied.length) {
+        lines.push(`백업 대상: ${data.copied.join(", ")}`);
+      }
+      if (data.stdout) {
+        lines.push("", "[stdout]", data.stdout.trim());
+      }
+      if (data.stderr) {
+        lines.push("", "[stderr]", data.stderr.trim());
+      }
+      return lines.join("\n");
+    };
+
+    const runServerTask = async (task) => {
+      const confirmMessage = serverTaskConfirmMessages[task];
+      if (confirmMessage && !window.confirm(confirmMessage)) {
+        return;
+      }
+
+      const buttons = [...adminPages.querySelectorAll('[data-action="server-task"]')];
+      buttons.forEach((button) => {
+        button.disabled = true;
+      });
+      adminServerOutput.textContent = `${serverTaskLabels[task] || task} 실행 중...`;
+      setStatus("");
+
+      try {
+        const response = await fetch("/api/admin/server-task", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ task }),
+        });
+        const data = await response.json().catch(() => ({}));
+        adminServerOutput.textContent = formatServerTaskOutput(task, data);
+        if (!response.ok) {
+          throw new Error(data.error || "서버 작업에 실패했습니다.");
+        }
+        setStatus(`${serverTaskLabels[task] || task} 완료`, "success");
+      } catch (error) {
+        setStatus(error.message, "error");
+      } finally {
+        buttons.forEach((button) => {
+          button.disabled = false;
+        });
+      }
     };
 
     const normalizeMember = (member = {}) => ({
@@ -327,6 +414,9 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     const normalizeGalleryGridRows = (value) => Math.max(1, Math.min(24, Number(value) || 6));
 
     const galleryBlockCells = (blocks) => {
+      if (String(blocks) === "2v") {
+        return [0, 3];
+      }
       const value = Number(blocks) || 1;
       if (value === 2) {
         return [0, 1];
@@ -341,17 +431,36 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     };
 
     const normalizeGallerySize = (size) => {
+      if (String(size) === "2v") {
+        return "2v";
+      }
       const value = Number(size) || 1;
       return [1, 2, 4, 6].includes(value) ? value : 1;
     };
+
+    const gallerySizeOptions = [
+      { value: 1, label: "1" },
+      { value: 2, label: "2가로" },
+      { value: "2v", label: "2세로" },
+      { value: 4, label: "4" },
+      { value: 6, label: "6" },
+    ];
 
     const galleryPlacementCells = (startCell, size, gridRows) => {
       const row = Math.floor(startCell / galleryColumnCount);
       const column = startCell % galleryColumnCount;
       const normalizedSize = normalizeGallerySize(size);
-      const startColumn = normalizedSize === 1 ? column : normalizedSize === 2 ? Math.min(column, 1) : normalizedSize === 4 ? Math.min(column, 1) : 0;
-      const startRow = normalizedSize === 1 || normalizedSize === 2 ? row : Math.min(row, Math.max(0, gridRows - 2));
-      const width = normalizedSize === 1 ? 1 : normalizedSize === 2 || normalizedSize === 4 ? 2 : 3;
+      const startColumn =
+        normalizedSize === 1 || normalizedSize === "2v"
+          ? column
+          : normalizedSize === 2 || normalizedSize === 4
+            ? Math.min(column, 1)
+            : 0;
+      const startRow =
+        normalizedSize === 1 || normalizedSize === 2
+          ? row
+          : Math.min(row, Math.max(0, gridRows - 2));
+      const width = normalizedSize === "2v" || normalizedSize === 1 ? 1 : normalizedSize === 2 || normalizedSize === 4 ? 2 : 3;
       const height = normalizedSize === 1 || normalizedSize === 2 ? 1 : 2;
       const cells = [];
 
@@ -411,12 +520,13 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     };
 
     const normalizeGalleryItem = (item = {}, gridRows = 6, index = 0) => ({
+      id: Number(item.id) || index + 1,
       title: item.title || item.caption || `Photo ${index + 1}`,
       image: item.image || "",
       alt: item.alt || item.title || "",
       size: normalizeGallerySize(item.size || item.blocks),
       placed: item.placed !== false,
-      cells: item.placed === false ? [] : normalizeGalleryCells(item.cells, gridRows, item.blocks),
+      cells: item.placed === false ? [] : normalizeGalleryCells(item.cells, gridRows, item.blocks || item.size),
     });
 
     const moveGalleryItemRows = (item, rowDelta, gridRows, index) => {
@@ -1327,9 +1437,45 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
     const galleryCellsValue = (item) => (item.placed === false ? "" : normalizeGalleryCells(item.cells, galleryData.gridRows).join(","));
 
-    const galleryItemLabel = (item, index) => item.title || `Photo ${index + 1}`;
+    const nextGalleryItemId = () => Math.max(0, ...galleryData.items.map((item) => Number(item.id) || 0)) + 1;
+
+    const galleryItemNumber = (item, index) => Number(item.id) || index + 1;
+
+    const galleryItemLabel = (item, index) => item.title || `Photo ${galleryItemNumber(item, index)}`;
+
+    const galleryPageSize = 10;
 
     const selectedGalleryItem = () => galleryData.items[selectedGalleryItemIndex] || galleryData.items[0] || null;
+
+    const galleryFilteredEntries = () =>
+      galleryData.items
+        .map((item, index) => ({ item, index }))
+        .filter(({ item }) => {
+          if (selectedGalleryFilter === "placed") {
+            return item.placed !== false;
+          }
+          if (selectedGalleryFilter === "unplaced") {
+            return item.placed === false;
+          }
+          return true;
+        });
+
+    const galleryPageCount = () => Math.max(1, Math.ceil(galleryFilteredEntries().length / galleryPageSize));
+
+    const clampGalleryPage = () => {
+      selectedGalleryPage = Math.max(1, Math.min(selectedGalleryPage, galleryPageCount()));
+    };
+
+    const ensureSelectedGalleryVisible = () => {
+      const entries = galleryFilteredEntries();
+      const filteredIndex = entries.findIndex((entry) => entry.index === selectedGalleryItemIndex);
+      if (filteredIndex >= 0) {
+        selectedGalleryPage = Math.floor(filteredIndex / galleryPageSize) + 1;
+      }
+      clampGalleryPage();
+    };
+
+    const galleryStatusLabel = (item) => (item.placed === false ? "미배치" : "배치됨");
 
     const galleryCellOwner = (cellIndex) =>
       galleryData.items.findIndex((item) => item.placed !== false && normalizeGalleryCells(item.cells, galleryData.gridRows).includes(cellIndex));
@@ -1358,49 +1504,113 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       }).join("");
     };
 
-    const renderGalleryItemList = () =>
+    const renderGalleryHiddenItems = () =>
       galleryData.items
-        .map((item, itemIndex) => {
-          const activeClass = itemIndex === selectedGalleryItemIndex ? " is-active" : "";
-          return `
-            <div class="admin-gallery-item-card${activeClass}" data-gallery-item>
-              <button class="admin-gallery-item-select" type="button" data-action="select-gallery-item" data-item-index="${itemIndex}">
-                ${escapeHtml(galleryItemLabel(item, itemIndex))}
-              </button>
-              <label class="admin-field">
-                <span>관리용 제목</span>
-                <input name="gallery-item-title" value="${escapeHtml(item.title)}" placeholder="Photo ${itemIndex + 1}" />
-              </label>
-              <label class="admin-field">
-                <span>이미지 경로</span>
-                <input name="gallery-image" value="${escapeHtml(item.image)}" placeholder="/uploads/gallery/photo.jpg" />
-              </label>
-              <input name="gallery-alt" value="${escapeHtml(item.alt)}" type="hidden" />
-              <input name="gallery-size" value="${escapeHtml(item.size)}" type="hidden" />
-              <input name="gallery-placed" value="${item.placed === false ? "false" : "true"}" type="hidden" />
-              <input name="gallery-cells" value="${escapeHtml(galleryCellsValue(item))}" type="hidden" />
-              <div class="admin-gallery-size-picker" aria-label="사진 크기 선택">
-                ${[1, 2, 4, 6]
-                  .map((size) => `
-                    <button class="admin-gallery-size-button${item.size === size ? " is-active" : ""}" type="button" data-action="set-gallery-size" data-item-index="${itemIndex}" data-size="${size}">
-                      ${size}
-                    </button>
-                  `)
-                  .join("")}
-              </div>
-              <input type="file" accept="image/*" data-action="upload-gallery-image" data-item-index="${itemIndex}" />
-              <div class="admin-row-actions">
-                <button class="admin-icon-button" type="button" data-action="clear-gallery-placement" data-item-index="${itemIndex}">배치 취소</button>
-                <button class="admin-icon-button" type="button" data-action="move-gallery-item-up" data-item-index="${itemIndex}">위</button>
-                <button class="admin-icon-button" type="button" data-action="move-gallery-item-down" data-item-index="${itemIndex}">아래</button>
-                <button class="admin-icon-button" type="button" data-action="remove-gallery-item" data-item-index="${itemIndex}">삭제</button>
-              </div>
+        .map(
+          (item) => `
+            <div data-gallery-item>
+              <input name="gallery-item-id" value="${escapeHtml(item.id)}" />
+              <input name="gallery-item-title" value="${escapeHtml(item.title)}" />
+              <input name="gallery-image" value="${escapeHtml(item.image)}" />
+              <input name="gallery-alt" value="${escapeHtml(item.alt)}" />
+              <input name="gallery-size" value="${escapeHtml(item.size)}" />
+              <input name="gallery-placed" value="${item.placed === false ? "false" : "true"}" />
+              <input name="gallery-cells" value="${escapeHtml(galleryCellsValue(item))}" />
             </div>
+          `,
+        )
+        .join("");
+
+    const renderGalleryItemList = () => {
+      clampGalleryPage();
+      const entries = galleryFilteredEntries();
+      const pageCount = galleryPageCount();
+      const pageEntries = entries.slice((selectedGalleryPage - 1) * galleryPageSize, selectedGalleryPage * galleryPageSize);
+      const listItems = pageEntries
+        .map(({ item, index }) => {
+          const activeClass = index === selectedGalleryItemIndex ? " is-active" : "";
+          const thumbnail = item.image
+            ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(galleryItemLabel(item, index))}" loading="lazy" />`
+            : `<span>${galleryItemNumber(item, index)}</span>`;
+          return `
+            <button class="admin-gallery-list-item${activeClass}" type="button" data-action="select-gallery-item" data-item-index="${index}">
+              <span class="admin-gallery-list-number">${galleryItemNumber(item, index)}</span>
+              <span class="admin-gallery-list-thumb">${thumbnail}</span>
+              <span class="admin-gallery-list-meta">
+                <strong>${escapeHtml(galleryItemLabel(item, index))}</strong>
+                <em>${galleryStatusLabel(item)}</em>
+              </span>
+            </button>
           `;
         })
         .join("");
 
+      return `
+        <div class="admin-gallery-filter">
+          ${[
+            ["all", "전체"],
+            ["placed", "배치됨"],
+            ["unplaced", "미배치"],
+          ]
+            .map(([filter, label]) => `
+              <button class="admin-gallery-filter-button${selectedGalleryFilter === filter ? " is-active" : ""}" type="button" data-action="set-gallery-filter" data-filter="${filter}">
+                ${label}
+              </button>
+            `)
+            .join("")}
+        </div>
+        <div class="admin-gallery-list">
+          ${listItems || '<p class="admin-empty">표시할 사진이 없습니다.</p>'}
+        </div>
+        <div class="admin-gallery-pagination">
+          <button class="admin-icon-button" type="button" data-action="set-gallery-page" data-page="${selectedGalleryPage - 1}" ${selectedGalleryPage <= 1 ? "disabled" : ""}>이전</button>
+          <span>${selectedGalleryPage} / ${pageCount}</span>
+          <button class="admin-icon-button" type="button" data-action="set-gallery-page" data-page="${selectedGalleryPage + 1}" ${selectedGalleryPage >= pageCount ? "disabled" : ""}>다음</button>
+        </div>
+      `;
+    };
+
+    const renderGallerySelectedEditor = () => {
+      const item = selectedGalleryItem();
+      if (!item) {
+        return '<p class="admin-empty">선택된 사진이 없습니다.</p>';
+      }
+
+      return `
+        <div class="admin-gallery-selected-editor">
+          <p class="admin-gallery-selected-label">선택 사진 #${galleryItemNumber(item, selectedGalleryItemIndex)}</p>
+          <label class="admin-field">
+            <span>관리용 제목</span>
+            <input name="gallery-editor-title" value="${escapeHtml(item.title)}" placeholder="Photo ${galleryItemNumber(item, selectedGalleryItemIndex)}" />
+          </label>
+          <label class="admin-field">
+            <span>이미지 경로</span>
+            <input name="gallery-editor-image" value="${escapeHtml(item.image)}" placeholder="/uploads/gallery/photo.webp" />
+          </label>
+          <input name="gallery-editor-alt" value="${escapeHtml(item.alt)}" type="hidden" />
+          <div class="admin-gallery-size-picker" aria-label="사진 크기 선택">
+            ${gallerySizeOptions
+              .map((option) => `
+                <button class="admin-gallery-size-button${item.size === option.value ? " is-active" : ""}" type="button" data-action="set-gallery-size" data-item-index="${selectedGalleryItemIndex}" data-size="${option.value}">
+                  ${option.label}
+                </button>
+              `)
+              .join("")}
+          </div>
+          <input type="file" accept="image/*" data-action="upload-gallery-image" data-item-index="${selectedGalleryItemIndex}" />
+          <div class="admin-row-actions">
+            <button class="admin-icon-button" type="button" data-action="clear-gallery-placement" data-item-index="${selectedGalleryItemIndex}">배치 취소</button>
+            <button class="admin-icon-button" type="button" data-action="move-gallery-item-up" data-item-index="${selectedGalleryItemIndex}">위</button>
+            <button class="admin-icon-button" type="button" data-action="move-gallery-item-down" data-item-index="${selectedGalleryItemIndex}">아래</button>
+            <button class="admin-icon-button" type="button" data-action="remove-gallery-item" data-item-index="${selectedGalleryItemIndex}">삭제</button>
+          </div>
+        </div>
+      `;
+    };
+
     const renderGalleryEditor = () => {
+      selectedGalleryItemIndex = Math.max(0, Math.min(selectedGalleryItemIndex, galleryData.items.length - 1));
+      clampGalleryPage();
       seasonEditor.innerHTML = `
         <div class="admin-panel" data-gallery-form>
           <div class="admin-form-grid">
@@ -1437,8 +1647,14 @@ import BaseLayout from "../layouts/BaseLayout.astro";
                 <h3>사진 목록</h3>
                 <button class="admin-button" type="button" data-action="add-gallery-item">사진 추가</button>
               </div>
-              <div class="admin-gallery-item-list">
+              <div class="admin-gallery-hidden-items" hidden>
+                ${renderGalleryHiddenItems()}
+              </div>
+              <div class="admin-gallery-list-panel">
                 ${renderGalleryItemList() || '<p class="admin-empty">등록된 사진이 없습니다.</p>'}
+              </div>
+              <div class="admin-gallery-edit-panel">
+                ${renderGallerySelectedEditor()}
               </div>
             </div>
           </div>
@@ -1708,6 +1924,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       galleryData.description = form.querySelector('[name="gallery-description"]').value.trim();
       galleryData.gridRows = normalizeGalleryGridRows(form.querySelector('[name="gallery-grid-rows"]').value);
       galleryData.items = [...form.querySelectorAll("[data-gallery-item]")].map((itemEl, index) => ({
+        id: Number(itemEl.querySelector('[name="gallery-item-id"]').value) || index + 1,
         title: itemEl.querySelector('[name="gallery-item-title"]').value.trim() || `Photo ${index + 1}`,
         image: itemEl.querySelector('[name="gallery-image"]').value.trim(),
         alt: itemEl.querySelector('[name="gallery-alt"]').value.trim(),
@@ -1718,6 +1935,16 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             ? []
             : normalizeGalleryCells(itemEl.querySelector('[name="gallery-cells"]').value.split(","), galleryData.gridRows),
       }));
+
+      const selectedEditor = form.querySelector(".admin-gallery-selected-editor");
+      const selectedItem = galleryData.items[selectedGalleryItemIndex];
+      if (selectedEditor && selectedItem) {
+        selectedItem.title =
+          selectedEditor.querySelector('[name="gallery-editor-title"]').value.trim() ||
+          `Photo ${galleryItemNumber(selectedItem, selectedGalleryItemIndex)}`;
+        selectedItem.image = selectedEditor.querySelector('[name="gallery-editor-image"]').value.trim();
+        selectedItem.alt = selectedEditor.querySelector('[name="gallery-editor-alt"]').value.trim();
+      }
     };
 
     const swap = (array, from, to) => {
@@ -2075,6 +2302,13 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       if (action === "select-gallery-item") {
         selectedGalleryItemIndex = itemIndex;
       }
+      if (action === "set-gallery-filter") {
+        selectedGalleryFilter = actionEl.dataset.filter || "all";
+        selectedGalleryPage = 1;
+      }
+      if (action === "set-gallery-page") {
+        selectedGalleryPage = Math.max(1, Math.min(Number(actionEl.dataset.page) || 1, galleryPageCount()));
+      }
       if (action === "set-gallery-size") {
         const item = galleryData.items[itemIndex];
         if (item) {
@@ -2083,8 +2317,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         }
       }
       if (action === "add-gallery-item") {
+        const itemId = nextGalleryItemId();
         galleryData.items.push({
-          title: `Photo ${galleryData.items.length + 1}`,
+          id: itemId,
+          title: `Photo ${itemId}`,
           image: "",
           alt: "",
           size: 1,
@@ -2092,6 +2328,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           cells: [],
         });
         selectedGalleryItemIndex = galleryData.items.length - 1;
+        selectedGalleryFilter = "all";
+        ensureSelectedGalleryVisible();
       }
       if (action === "place-gallery-item") {
         const cellIndex = Number(actionEl.dataset.cellIndex);
@@ -2124,14 +2362,17 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       if (action === "remove-gallery-item") {
         galleryData.items.splice(itemIndex, 1);
         selectedGalleryItemIndex = Math.max(0, Math.min(selectedGalleryItemIndex, galleryData.items.length - 1));
+        ensureSelectedGalleryVisible();
       }
       if (action === "move-gallery-item-up") {
         swap(galleryData.items, itemIndex, itemIndex - 1);
         selectedGalleryItemIndex = Math.max(0, itemIndex - 1);
+        ensureSelectedGalleryVisible();
       }
       if (action === "move-gallery-item-down") {
         swap(galleryData.items, itemIndex, itemIndex + 1);
         selectedGalleryItemIndex = Math.min(galleryData.items.length - 1, itemIndex + 1);
+        ensureSelectedGalleryVisible();
       }
 
       renderGalleryEditor();
@@ -2336,6 +2577,11 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       }
 
       try {
+        if (actionEl.dataset.action === "server-task") {
+          await runServerTask(actionEl.dataset.serverTask);
+          return;
+        }
+
         if (actionEl.dataset.action === "open-editor" && actionEl.dataset.editor === "members") {
           await loadMembersEditor();
         }

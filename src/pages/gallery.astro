@@ -28,6 +28,9 @@ import fallbackGalleryData from "../../data/gallery.json";
     const normalizeGridRows = (value) => Math.max(1, Math.min(24, Number(value) || 6));
 
     const blockCells = (value) => {
+      if (String(value) === "2v") {
+        return [0, 3];
+      }
       const blocks = Number(value) || 1;
       if (blocks === 2) {
         return [0, 1];
@@ -88,7 +91,7 @@ import fallbackGalleryData from "../../data/gallery.json";
     };
 
     const galleryItemStyle = (item, gridRows) => {
-      const cells = normalizeCells(item.cells, gridRows, item.blocks);
+      const cells = normalizeCells(item.cells, gridRows, item.blocks || item.size);
       const rows = cells.map((cell) => Math.floor(cell / galleryColumnCount));
       const columns = cells.map((cell) => cell % galleryColumnCount);
       const minRow = Math.min(...rows);
