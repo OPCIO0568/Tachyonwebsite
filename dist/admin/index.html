@@ -336,6 +336,30 @@
       cells: item.placed === false ? [] : normalizeGalleryCells(item.cells, gridRows, item.blocks),
     });
 
+    const moveGalleryItemRows = (item, rowDelta, gridRows, index) => {
+      const normalizedItem = normalizeGalleryItem(item, Math.max(1, gridRows), index);
+      if (normalizedItem.placed === false) {
+        return normalizedItem;
+      }
+
+      const shiftedCells = normalizedItem.cells.map((cell) => cell + rowDelta * galleryColumnCount);
+      const maxCell = gridRows * galleryColumnCount;
+      const isOutOfBounds = shiftedCells.some((cell) => cell < 0 || cell >= maxCell);
+
+      if (isOutOfBounds) {
+        return {
+          ...normalizedItem,
+          placed: false,
+          cells: [],
+        };
+      }
+
+      return {
+        ...normalizedItem,
+        cells: shiftedCells,
+      };
+    };
+
     const normalizeGalleryData = (data = {}) => {
       const gridRows = normalizeGalleryGridRows(data.gridRows || 6);
       return {
@@ -1313,8 +1337,10 @@
               <div class="admin-subpanel-header">
                 <h3>배치 격자</h3>
                 <div class="admin-row-actions">
-                  <button class="admin-icon-button" type="button" data-action="add-gallery-grid-row">셀 줄 추가</button>
-                  <button class="admin-icon-button" type="button" data-action="remove-gallery-grid-row">셀 줄 삭제</button>
+                  <button class="admin-icon-button" type="button" data-action="add-gallery-grid-row-top">위에 추가</button>
+                  <button class="admin-icon-button" type="button" data-action="add-gallery-grid-row-bottom">아래 추가</button>
+                  <button class="admin-icon-button" type="button" data-action="remove-gallery-grid-row-top">위 삭제</button>
+                  <button class="admin-icon-button" type="button" data-action="remove-gallery-grid-row-bottom">아래 삭제</button>
                 </div>
               </div>
               <p class="admin-empty">오른쪽에서 사진과 크기 1/2/4/6을 선택한 뒤 왼쪽 격자에서 시작 위치를 클릭하면 배치됩니다.</p>
@@ -1946,10 +1972,20 @@
       readGalleryFromDom();
       const itemIndex = Number(actionEl.dataset.itemIndex);
 
-      if (action === "add-gallery-grid-row") {
+      if (action === "add-gallery-grid-row-top") {
+        const nextGridRows = normalizeGalleryGridRows(galleryData.gridRows + 1);
+        galleryData.items = galleryData.items.map((item, index) => moveGalleryItemRows(item, 1, nextGridRows, index));
+        galleryData.gridRows = nextGridRows;
+      }
+      if (action === "add-gallery-grid-row-bottom") {
         galleryData.gridRows = normalizeGalleryGridRows(galleryData.gridRows + 1);
       }
-      if (action === "remove-gallery-grid-row") {
+      if (action === "remove-gallery-grid-row-top") {
+        const nextGridRows = normalizeGalleryGridRows(galleryData.gridRows - 1);
+        galleryData.items = galleryData.items.map((item, index) => moveGalleryItemRows(item, -1, nextGridRows, index));
+        galleryData.gridRows = nextGridRows;
+      }
+      if (action === "remove-gallery-grid-row-bottom") {
         galleryData.gridRows = normalizeGalleryGridRows(galleryData.gridRows - 1);
         galleryData.items = galleryData.items.map((item, index) => normalizeGalleryItem(item, galleryData.gridRows, index));
       }
