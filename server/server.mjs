@@ -23,11 +23,13 @@ const historyFile = path.join(dataDir, "history.json");
 const membersFile = path.join(dataDir, "members.json");
 const sponsorsFile = path.join(dataDir, "sponsors.json");
 const contactFile = path.join(dataDir, "contact.json");
+const galleryFile = path.join(dataDir, "gallery.json");
 const visitsFile = path.join(dataDir, "visits.json");
 const sitePagesFile = path.join(dataDir, "site-pages.json");
 const authFile = path.join(dataDir, "auth.json");
 
 const port = Number(process.env.PORT || 4321);
+const host = process.env.HOST || "127.0.0.1";
 const initialAdminPassword = process.env.TACHYON_ADMIN_PASSWORD || "dev-password";
 const sessionSecret = process.env.TACHYON_SESSION_SECRET || randomBytes(32).toString("hex");
 const sessionCookie = "tachyon_admin";
@@ -138,8 +140,19 @@ const defaultContactData = {
   title: "Contact Us",
   subtitle: "",
   heroImage: "",
+  serverAdmin: {
+    role: "Server Admin",
+    name: "TACHYON Website Admin",
+    email: "",
+  },
   contacts: [],
   socials: [],
+};
+
+const defaultGalleryData = {
+  title: "Gallery",
+  description: "Tachyon activity photos",
+  rows: [],
 };
 
 const defaultVisitsData = {
@@ -155,6 +168,54 @@ const defaultSitePages = [
     route: "/members",
     file: "data/members.json",
     editor: "members",
+  },
+  {
+    name: "Home",
+    route: "/",
+    file: "data/home.json",
+    editor: "home",
+  },
+  {
+    name: "Home EN",
+    route: "/en",
+    file: "data/home-en.json",
+    editor: "home-en",
+  },
+  {
+    name: "About US",
+    route: "/intro",
+    file: "data/intro.json",
+    editor: "intro",
+  },
+  {
+    name: "About US EN",
+    route: "/en/intro",
+    file: "data/intro-en.json",
+    editor: "intro-en",
+  },
+  {
+    name: "Our Cars",
+    route: "/history",
+    file: "data/history.json",
+    editor: "history",
+  },
+  {
+    name: "Gallery",
+    route: "/gallery",
+    file: "data/gallery.json",
+    editor: "gallery",
+  },
+  {
+    name: "Sponsors",
+    route: "/sponsors",
+    file: "data/sponsors.json",
+    editor: "sponsors",
+  },
+  {
+    name: "Contact US",
+    route: "/contact",
+    file: "data/contact.json",
+    editor: "contact",
   },
 ];
 
@@ -570,6 +631,11 @@ const normalizeContactData = (data) => ({
   title: String(data?.title || "Contact Us").trim(),
   subtitle: String(data?.subtitle || "").trim(),
   heroImage: String(data?.heroImage || "").trim(),
+  serverAdmin: {
+    role: String(data?.serverAdmin?.role || "Server Admin").trim(),
+    name: String(data?.serverAdmin?.name || "").trim(),
+    email: String(data?.serverAdmin?.email || "").trim(),
+  },
   contacts: (Array.isArray(data?.contacts) ? data.contacts : [])
     .map((item) => ({
       role: String(item?.role || "").trim(),
@@ -603,6 +669,120 @@ const writeContact = async (data) => {
   const tempFile = `${contactFile}.${process.pid}.tmp`;
   await writeFile(tempFile, `${JSON.stringify(normalized, null, 2)}\n`, "utf8");
   await rename(tempFile, contactFile);
+  return normalized;
+};
+
+const galleryColumnCount = 3;
+
+const normalizeGalleryGridRows = (value) => Math.max(1, Math.min(24, Number(value) || 6));
+
+const galleryBlockCells = (value) => {
+  const blocks = Number(value) || 1;
+  if (blocks === 2) {
+    return [0, 1];
+  }
+  if (blocks === 4) {
+    return [0, 1, 3, 4];
+  }
+  if (blocks === 6) {
+    return [0, 1, 2, 3, 4, 5];
+  }
+  return [0];
+};
+
+const normalizeGallerySize = (size) => {
+  const value = Number(size) || 1;
+  return [1, 2, 4, 6].includes(value) ? value : 1;
+};
+
+const normalizeGalleryCells = (cells, gridRows, fallbackBlocks = 1) => {
+  const maxCells = normalizeGalleryGridRows(gridRows) * galleryColumnCount;
+  const source = Array.isArray(cells) && cells.length ? cells : galleryBlockCells(fallbackBlocks);
+  const uniqueCells = [...new Set(source.map((cell) => Number(cell)).filter((cell) => Number.isInteger(cell) && cell >= 0 && cell < maxCells))];
+
+  if (!uniqueCells.length) {
+    return [0];
+  }
+
+  const rows = uniqueCells.map((cell) => Math.floor(cell / galleryColumnCount));
+  const columns = uniqueCells.map((cell) => cell % galleryColumnCount);
+  const minRow = Math.min(...rows);
+  const maxRow = Math.max(...rows);
+  const minColumn = Math.min(...columns);
+  const maxColumn = Math.max(...columns);
+  const rectCells = [];
+
+  for (let row = minRow; row <= maxRow; row += 1) {
+    for (let column = minColumn; column <= maxColumn; column += 1) {
+      const cell = row * galleryColumnCount + column;
+      if (cell < maxCells) {
+        rectCells.push(cell);
+      }
+    }
+  }
+
+  return rectCells;
+};
+
+const legacyGalleryItems = (data = {}) => {
+  if (Array.isArray(data?.items)) {
+    return data.items;
+  }
+
+  let rowOffset = 0;
+  return (Array.isArray(data?.rows) ? data.rows : []).flatMap((row) => {
+    const rowGridRows = normalizeGalleryGridRows(row?.gridRows || 2);
+    const items = (Array.isArray(row?.items) ? row.items : []).map((item) => ({
+      ...item,
+      cells: normalizeGalleryCells(item?.cells, rowGridRows, item?.blocks).map((cell) => cell + rowOffset * galleryColumnCount),
+    }));
+    rowOffset += rowGridRows;
+    return items;
+  });
+};
+
+const normalizeGalleryData = (data = {}) => {
+  const gridRows = normalizeGalleryGridRows(data?.gridRows || 6);
+  const usedCells = new Set();
+  const items = legacyGalleryItems(data)
+    .map((item, index) => {
+      const cells = item?.placed === false ? [] : normalizeGalleryCells(item?.cells, gridRows, item?.blocks).filter((cell) => !usedCells.has(cell));
+      cells.forEach((cell) => usedCells.add(cell));
+      return {
+        title: String(item?.title || item?.caption || `Photo ${index + 1}`).trim(),
+        image: String(item?.image || "").trim(),
+        alt: String(item?.alt || item?.title || "").trim(),
+        size: normalizeGallerySize(item?.size || item?.blocks),
+        placed: item?.placed !== false,
+        cells: item?.placed === false ? [] : cells,
+      };
+    })
+    .filter((item) => item.image || item.title);
+
+  return {
+    title: String(data?.title || "Gallery").trim(),
+    description: String(data?.description || "").trim(),
+    gridRows,
+    items,
+  };
+};
+
+const readGallery = async () => {
+  if (!(await fileExists(galleryFile))) {
+    await ensureDir(dataDir);
+    await writeFile(galleryFile, `${JSON.stringify(defaultGalleryData, null, 2)}\n`, "utf8");
+  }
+
+  const data = JSON.parse(await readFile(galleryFile, "utf8"));
+  return normalizeGalleryData(data);
+};
+
+const writeGallery = async (data) => {
+  await ensureDir(dataDir);
+  const normalized = normalizeGalleryData(data);
+  const tempFile = `${galleryFile}.${process.pid}.tmp`;
+  await writeFile(tempFile, `${JSON.stringify(normalized, null, 2)}\n`, "utf8");
+  await rename(tempFile, galleryFile);
   return normalized;
 };
 
@@ -953,6 +1133,11 @@ const handleApi = async (req, res, url) => {
     return true;
   }
 
+  if (req.method === "GET" && url.pathname === "/api/gallery") {
+    sendJson(res, 200, await readGallery());
+    return true;
+  }
+
   if (req.method === "GET" && url.pathname === "/api/admin/session") {
     sendJson(res, 200, { authenticated: isAuthenticated(req) });
     return true;
@@ -1097,6 +1282,15 @@ const handleApi = async (req, res, url) => {
     return true;
   }
 
+  if (req.method === "PUT" && url.pathname === "/api/admin/gallery") {
+    if (!requireAdmin(req, res)) {
+      return true;
+    }
+    const body = await readJsonBody(req);
+    sendJson(res, 200, await writeGallery(body));
+    return true;
+  }
+
   if (req.method === "POST" && url.pathname === "/api/admin/upload") {
     await uploadImage(req, res);
     return true;
@@ -1135,6 +1329,6 @@ createServer((req, res) => {
       res.end();
     }
   });
-}).listen(port, () => {
-  console.log(`Tachyon site server listening on http://localhost:${port}`);
+}).listen(port, host, () => {
+  console.log(`Tachyon site server listening on http://${host}:${port}`);
 });

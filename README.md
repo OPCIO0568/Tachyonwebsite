@@ -81,6 +81,7 @@ astro-site/
 │  ├─ intro-en.json         # 영문 About US
 │  ├─ history.json          # Our Cars, 수상 내역
 │  ├─ members.json          # Members, OB, Archive
+│  ├─ gallery.json          # Gallery 사진 줄과 블록 크기
 │  ├─ sponsors.json         # Sponsors
 │  ├─ contact.json          # Contact US
 │  ├─ visits.json           # 방문 조회수
@@ -97,6 +98,7 @@ astro-site/
 │  │  ├─ index.astro        # 국문 Home
 │  │  ├─ intro.astro        # 국문 About US
 │  │  ├─ history.astro      # Our Cars
+│  │  ├─ gallery.astro      # Gallery
 │  │  ├─ sponsors.astro     # Sponsors
 │  │  ├─ contact.astro      # Contact US
 │  │  ├─ members/
@@ -183,6 +185,7 @@ npm run serve
 - `About US EN`: 영문 소개 페이지
 - `Our Cars`: 차량 시리즈, 차량 정보, 수상 내역
 - `Members`: 시즌별 멤버, OB, Archive
+- `Gallery`: 사진 줄, 사진 업로드, 블록 크기
 - `Sponsors`: 스폰서 목록, 로고, 대표 이미지
 - `Contact US`: 연락처, 소셜 링크, 대표 이미지
 
@@ -219,6 +222,7 @@ npm run serve
 | `data/intro-en.json` | 영문 About US 페이지 |
 | `data/history.json` | Our Cars 차량 시리즈와 수상 내역 |
 | `data/members.json` | 시즌별 멤버, OB, Archive |
+| `data/gallery.json` | Gallery 사진 줄과 블록 크기 |
 | `data/sponsors.json` | 스폰서 정보 |
 | `data/contact.json` | Contact US 연락처와 소셜 링크 |
 | `data/visits.json` | 방문 조회수와 최근 7일 통계 |
@@ -240,6 +244,7 @@ npm run serve
 | `/members/2026` | 2026 시즌 Members |
 | `/members/archive` | Members Archive |
 | `/members/ob` | OB Members |
+| `/gallery` | Gallery |
 | `/sponsors` | Sponsors |
 | `/contact` | Contact US |
 | `/admin` | 관리자 페이지 |
@@ -286,6 +291,7 @@ public/images/sponsors/keyang.png
 ```text
 uploads/home/hero/...
 uploads/history/vehicles/...
+uploads/gallery/row-1/...
 uploads/members/2026/...
 uploads/sponsors/logos/...
 ```

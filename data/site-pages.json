@@ -46,5 +46,11 @@
     "route": "/contact",
     "file": "data/contact.json",
     "editor": "contact"
+  },
+  {
+    "name": "Gallery",
+    "route": "/gallery",
+    "file": "data/gallery.json",
+    "editor": "gallery"
   }
 ]

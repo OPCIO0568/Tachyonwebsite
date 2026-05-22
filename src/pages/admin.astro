@@ -1,4 +1,4 @@
----
+﻿---
 import BaseLayout from "../layouts/BaseLayout.astro";
 ---
 
@@ -108,11 +108,13 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     let historyData = null;
     let sponsorsData = null;
     let contactData = null;
+    let galleryData = null;
     let visitsData = { total: 0, pages: {}, days: {}, updatedAt: "" };
     let sitePages = [];
     let activeEditor = "";
     let selectedYear = "";
     let selectedVisitRoute = "all";
+    let selectedGalleryItemIndex = 0;
 
     const defaultPhoto = "/images/profile/unprofile.jpg";
 
@@ -311,9 +313,121 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       title: data.title || "Contact Us",
       subtitle: data.subtitle || "",
       heroImage: data.heroImage || "",
+      serverAdmin: {
+        role: data.serverAdmin?.role || "Server Admin",
+        name: data.serverAdmin?.name || "",
+        email: data.serverAdmin?.email || "",
+      },
       contacts: Array.isArray(data.contacts) ? data.contacts.map(normalizeContactPerson) : [],
       socials: Array.isArray(data.socials) ? data.socials.map(normalizeContactSocial) : [],
     });
+
+    const galleryColumnCount = 3;
+
+    const normalizeGalleryGridRows = (value) => Math.max(1, Math.min(24, Number(value) || 6));
+
+    const galleryBlockCells = (blocks) => {
+      const value = Number(blocks) || 1;
+      if (value === 2) {
+        return [0, 1];
+      }
+      if (value === 4) {
+        return [0, 1, 3, 4];
+      }
+      if (value === 6) {
+        return [0, 1, 2, 3, 4, 5];
+      }
+      return [0];
+    };
+
+    const normalizeGallerySize = (size) => {
+      const value = Number(size) || 1;
+      return [1, 2, 4, 6].includes(value) ? value : 1;
+    };
+
+    const galleryPlacementCells = (startCell, size, gridRows) => {
+      const row = Math.floor(startCell / galleryColumnCount);
+      const column = startCell % galleryColumnCount;
+      const normalizedSize = normalizeGallerySize(size);
+      const startColumn = normalizedSize === 1 ? column : normalizedSize === 2 ? Math.min(column, 1) : normalizedSize === 4 ? Math.min(column, 1) : 0;
+      const startRow = normalizedSize === 1 || normalizedSize === 2 ? row : Math.min(row, Math.max(0, gridRows - 2));
+      const width = normalizedSize === 1 ? 1 : normalizedSize === 2 || normalizedSize === 4 ? 2 : 3;
+      const height = normalizedSize === 1 || normalizedSize === 2 ? 1 : 2;
+      const cells = [];
+
+      for (let rowOffset = 0; rowOffset < height; rowOffset += 1) {
+        for (let columnOffset = 0; columnOffset < width; columnOffset += 1) {
+          cells.push((startRow + rowOffset) * galleryColumnCount + startColumn + columnOffset);
+        }
+      }
+
+      return cells;
+    };
+
+    const normalizeGalleryCells = (cells, gridRows, fallbackBlocks = 1) => {
+      const maxCells = normalizeGalleryGridRows(gridRows) * galleryColumnCount;
+      const source = Array.isArray(cells) && cells.length ? cells : galleryBlockCells(fallbackBlocks);
+      const uniqueCells = [...new Set(source.map((cell) => Number(cell)).filter((cell) => Number.isInteger(cell) && cell >= 0 && cell < maxCells))];
+
+      if (!uniqueCells.length) {
+        return [0];
+      }
+
+      const rows = uniqueCells.map((cell) => Math.floor(cell / galleryColumnCount));
+      const columns = uniqueCells.map((cell) => cell % galleryColumnCount);
+      const minRow = Math.min(...rows);
+      const maxRow = Math.max(...rows);
+      const minColumn = Math.min(...columns);
+      const maxColumn = Math.max(...columns);
+      const rectCells = [];
+
+      for (let row = minRow; row <= maxRow; row += 1) {
+        for (let column = minColumn; column <= maxColumn; column += 1) {
+          const cell = row * galleryColumnCount + column;
+          if (cell < maxCells) {
+            rectCells.push(cell);
+          }
+        }
+      }
+
+      return rectCells;
+    };
+
+    const legacyGalleryItems = (data = {}) => {
+      if (Array.isArray(data.items)) {
+        return data.items;
+      }
+
+      let rowOffset = 0;
+      return (Array.isArray(data.rows) ? data.rows : []).flatMap((row) => {
+        const rowGridRows = normalizeGalleryGridRows(row.gridRows || 2);
+        const items = (Array.isArray(row.items) ? row.items : []).map((item) => ({
+          ...item,
+          cells: normalizeGalleryCells(item.cells, rowGridRows, item.blocks).map((cell) => cell + rowOffset * galleryColumnCount),
+        }));
+        rowOffset += rowGridRows;
+        return items;
+      });
+    };
+
+    const normalizeGalleryItem = (item = {}, gridRows = 6, index = 0) => ({
+      title: item.title || item.caption || `Photo ${index + 1}`,
+      image: item.image || "",
+      alt: item.alt || item.title || "",
+      size: normalizeGallerySize(item.size || item.blocks),
+      placed: item.placed !== false,
+      cells: item.placed === false ? [] : normalizeGalleryCells(item.cells, gridRows, item.blocks),
+    });
+
+    const normalizeGalleryData = (data = {}) => {
+      const gridRows = normalizeGalleryGridRows(data.gridRows || 6);
+      return {
+        title: data.title || "Gallery",
+        description: data.description || "",
+        gridRows,
+        items: legacyGalleryItems(data).map((item, index) => normalizeGalleryItem(item, gridRows, index)),
+      };
+    };
 
     const normalizeVisitsData = (data = {}) => ({
       total: Number(data.total) || 0,
@@ -436,6 +550,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         intro: "About US",
         "intro-en": "About US EN",
         history: "Our Cars",
+        gallery: "Gallery",
         sponsors: "Sponsors",
         contact: "Contact US",
       };
@@ -1162,10 +1277,148 @@ import BaseLayout from "../layouts/BaseLayout.astro";
               ${renderContactSocialRows() || '<p class="admin-empty">등록된 소셜 링크가 없습니다.</p>'}
             </div>
           </div>
+
+          <div class="admin-subpanel">
+            <div class="admin-subpanel-header">
+              <h3>서버 관리자</h3>
+            </div>
+            <div class="admin-form-grid">
+              <label class="admin-field">
+                <span>표시명</span>
+                <input name="contact-server-role" value="${escapeHtml(contactData.serverAdmin.role)}" placeholder="Server Admin" />
+              </label>
+              <label class="admin-field">
+                <span>이름</span>
+                <input name="contact-server-name" value="${escapeHtml(contactData.serverAdmin.name)}" placeholder="TACHYON Website Admin" />
+              </label>
+              <label class="admin-field">
+                <span>이메일</span>
+                <input name="contact-server-email" value="${escapeHtml(contactData.serverAdmin.email)}" placeholder="email@example.com" />
+              </label>
+            </div>
+          </div>
         </div>
       `;
     };
 
+    const galleryCellsValue = (item) => (item.placed === false ? "" : normalizeGalleryCells(item.cells, galleryData.gridRows).join(","));
+
+    const galleryItemLabel = (item, index) => item.title || `Photo ${index + 1}`;
+
+    const selectedGalleryItem = () => galleryData.items[selectedGalleryItemIndex] || galleryData.items[0] || null;
+
+    const galleryCellOwner = (cellIndex) =>
+      galleryData.items.findIndex((item) => item.placed !== false && normalizeGalleryCells(item.cells, galleryData.gridRows).includes(cellIndex));
+
+    const renderGalleryLayoutBoard = () => {
+      const selectedItem = selectedGalleryItem();
+      const selectedCells = new Set(selectedItem?.placed === false ? [] : selectedItem ? normalizeGalleryCells(selectedItem.cells, galleryData.gridRows) : []);
+      return Array.from({ length: galleryData.gridRows * galleryColumnCount }, (_, cellIndex) => {
+        const ownerIndex = galleryCellOwner(cellIndex);
+        const isCurrent = ownerIndex === selectedGalleryItemIndex;
+        const isBlocked = ownerIndex !== -1 && !isCurrent;
+        const classes = [
+          "admin-gallery-board-cell",
+          selectedCells.has(cellIndex) ? "is-selected" : "",
+          isBlocked ? "is-blocked" : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
+        const label = isBlocked ? galleryItemLabel(galleryData.items[ownerIndex], ownerIndex) : selectedCells.has(cellIndex) ? galleryItemLabel(selectedItem, selectedGalleryItemIndex) : "";
+
+        return `
+          <button class="${classes}" type="button" data-action="place-gallery-item" data-cell-index="${cellIndex}" ${isBlocked || !selectedItem ? "disabled" : ""}>
+            ${escapeHtml(label)}
+          </button>
+        `;
+      }).join("");
+    };
+
+    const renderGalleryItemList = () =>
+      galleryData.items
+        .map((item, itemIndex) => {
+          const activeClass = itemIndex === selectedGalleryItemIndex ? " is-active" : "";
+          return `
+            <div class="admin-gallery-item-card${activeClass}" data-gallery-item>
+              <button class="admin-gallery-item-select" type="button" data-action="select-gallery-item" data-item-index="${itemIndex}">
+                ${escapeHtml(galleryItemLabel(item, itemIndex))}
+              </button>
+              <label class="admin-field">
+                <span>관리용 제목</span>
+                <input name="gallery-item-title" value="${escapeHtml(item.title)}" placeholder="Photo ${itemIndex + 1}" />
+              </label>
+              <label class="admin-field">
+                <span>이미지 경로</span>
+                <input name="gallery-image" value="${escapeHtml(item.image)}" placeholder="/uploads/gallery/photo.jpg" />
+              </label>
+              <input name="gallery-alt" value="${escapeHtml(item.alt)}" type="hidden" />
+              <input name="gallery-size" value="${escapeHtml(item.size)}" type="hidden" />
+              <input name="gallery-placed" value="${item.placed === false ? "false" : "true"}" type="hidden" />
+              <input name="gallery-cells" value="${escapeHtml(galleryCellsValue(item))}" type="hidden" />
+              <div class="admin-gallery-size-picker" aria-label="사진 크기 선택">
+                ${[1, 2, 4, 6]
+                  .map((size) => `
+                    <button class="admin-gallery-size-button${item.size === size ? " is-active" : ""}" type="button" data-action="set-gallery-size" data-item-index="${itemIndex}" data-size="${size}">
+                      ${size}
+                    </button>
+                  `)
+                  .join("")}
+              </div>
+              <input type="file" accept="image/*" data-action="upload-gallery-image" data-item-index="${itemIndex}" />
+              <div class="admin-row-actions">
+                <button class="admin-icon-button" type="button" data-action="clear-gallery-placement" data-item-index="${itemIndex}">배치 취소</button>
+                <button class="admin-icon-button" type="button" data-action="move-gallery-item-up" data-item-index="${itemIndex}">위</button>
+                <button class="admin-icon-button" type="button" data-action="move-gallery-item-down" data-item-index="${itemIndex}">아래</button>
+                <button class="admin-icon-button" type="button" data-action="remove-gallery-item" data-item-index="${itemIndex}">삭제</button>
+              </div>
+            </div>
+          `;
+        })
+        .join("");
+
+    const renderGalleryEditor = () => {
+      seasonEditor.innerHTML = `
+        <div class="admin-panel" data-gallery-form>
+          <div class="admin-form-grid">
+            <label class="admin-field">
+              <span>페이지 제목</span>
+              <input name="gallery-title" value="${escapeHtml(galleryData.title)}" placeholder="Gallery" />
+            </label>
+            <label class="admin-field admin-field-wide">
+              <span>페이지 설명</span>
+              <input name="gallery-description" value="${escapeHtml(galleryData.description)}" placeholder="Tachyon activity photos" />
+            </label>
+            <input name="gallery-grid-rows" value="${escapeHtml(galleryData.gridRows)}" type="hidden" />
+          </div>
+
+          <div class="admin-gallery-editor-grid">
+            <div class="admin-subpanel">
+              <div class="admin-subpanel-header">
+                <h3>배치 격자</h3>
+                <div class="admin-row-actions">
+                  <button class="admin-icon-button" type="button" data-action="add-gallery-grid-row">셀 줄 추가</button>
+                  <button class="admin-icon-button" type="button" data-action="remove-gallery-grid-row">셀 줄 삭제</button>
+                </div>
+              </div>
+              <p class="admin-empty">오른쪽에서 사진과 크기 1/2/4/6을 선택한 뒤 왼쪽 격자에서 시작 위치를 클릭하면 배치됩니다.</p>
+              <div class="admin-gallery-board" style="grid-template-rows: repeat(${galleryData.gridRows}, minmax(84px, 1fr));">
+                ${renderGalleryLayoutBoard()}
+              </div>
+            </div>
+
+            <div class="admin-subpanel">
+              <div class="admin-subpanel-header">
+                <h3>사진 목록</h3>
+                <button class="admin-button" type="button" data-action="add-gallery-item">사진 추가</button>
+              </div>
+              <div class="admin-gallery-item-list">
+                ${renderGalleryItemList() || '<p class="admin-empty">등록된 사진이 없습니다.</p>'}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    };
     const renderEditor = () => {
       renderSeasonOptions();
 
@@ -1401,6 +1654,11 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       contactData.title = form.querySelector('[name="contact-title"]').value.trim();
       contactData.subtitle = form.querySelector('[name="contact-subtitle"]').value.trim();
       contactData.heroImage = form.querySelector('[name="contact-hero"]').value.trim();
+      contactData.serverAdmin = {
+        role: form.querySelector('[name="contact-server-role"]').value.trim(),
+        name: form.querySelector('[name="contact-server-name"]').value.trim(),
+        email: form.querySelector('[name="contact-server-email"]').value.trim(),
+      };
       contactData.contacts = [...form.querySelectorAll("[data-contact-person]")].map((contactEl) => ({
         role: contactEl.querySelector('[name="contact-role"]').value.trim(),
         name: contactEl.querySelector('[name="contact-name"]').value.trim(),
@@ -1411,6 +1669,28 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         name: socialEl.querySelector('[name="contact-social-name"]').value.trim(),
         url: socialEl.querySelector('[name="contact-social-url"]').value.trim(),
         image: socialEl.querySelector('[name="contact-social-image"]').value.trim(),
+      }));
+    };
+
+    const readGalleryFromDom = () => {
+      const form = seasonEditor.querySelector("[data-gallery-form]");
+      if (!form) {
+        return;
+      }
+
+      galleryData.title = form.querySelector('[name="gallery-title"]').value.trim();
+      galleryData.description = form.querySelector('[name="gallery-description"]').value.trim();
+      galleryData.gridRows = normalizeGalleryGridRows(form.querySelector('[name="gallery-grid-rows"]').value);
+      galleryData.items = [...form.querySelectorAll("[data-gallery-item]")].map((itemEl, index) => ({
+        title: itemEl.querySelector('[name="gallery-item-title"]').value.trim() || `Photo ${index + 1}`,
+        image: itemEl.querySelector('[name="gallery-image"]').value.trim(),
+        alt: itemEl.querySelector('[name="gallery-alt"]').value.trim(),
+        size: normalizeGallerySize(itemEl.querySelector('[name="gallery-size"]').value),
+        placed: itemEl.querySelector('[name="gallery-placed"]').value !== "false",
+        cells:
+          itemEl.querySelector('[name="gallery-placed"]').value === "false"
+            ? []
+            : normalizeGalleryCells(itemEl.querySelector('[name="gallery-cells"]').value.split(","), galleryData.gridRows),
       }));
     };
 
@@ -1546,6 +1826,19 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         }),
       );
       renderContactEditor();
+      setStatus("저장했습니다.", "success");
+    };
+
+    const saveGalleryData = async () => {
+      readGalleryFromDom();
+      galleryData = normalizeGalleryData(
+        await requestJson("/api/admin/gallery", {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(galleryData),
+        }),
+      );
+      renderGalleryEditor();
       setStatus("저장했습니다.", "success");
     };
 
@@ -1728,6 +2021,84 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       }
 
       renderContactEditor();
+      setStatus("");
+    };
+
+    const handleGalleryAction = async (actionEl) => {
+      const action = actionEl.dataset.action;
+      readGalleryFromDom();
+      const itemIndex = Number(actionEl.dataset.itemIndex);
+
+      if (action === "add-gallery-grid-row") {
+        galleryData.gridRows = normalizeGalleryGridRows(galleryData.gridRows + 1);
+      }
+      if (action === "remove-gallery-grid-row") {
+        galleryData.gridRows = normalizeGalleryGridRows(galleryData.gridRows - 1);
+        galleryData.items = galleryData.items.map((item, index) => normalizeGalleryItem(item, galleryData.gridRows, index));
+      }
+      if (action === "select-gallery-item") {
+        selectedGalleryItemIndex = itemIndex;
+      }
+      if (action === "set-gallery-size") {
+        const item = galleryData.items[itemIndex];
+        if (item) {
+          item.size = normalizeGallerySize(actionEl.dataset.size);
+          selectedGalleryItemIndex = itemIndex;
+        }
+      }
+      if (action === "add-gallery-item") {
+        galleryData.items.push({
+          title: `Photo ${galleryData.items.length + 1}`,
+          image: "",
+          alt: "",
+          size: 1,
+          placed: false,
+          cells: [],
+        });
+        selectedGalleryItemIndex = galleryData.items.length - 1;
+      }
+      if (action === "place-gallery-item") {
+        const cellIndex = Number(actionEl.dataset.cellIndex);
+        const item = selectedGalleryItem();
+        if (item) {
+          const placementCells = galleryPlacementCells(cellIndex, item.size, galleryData.gridRows);
+          const blockedCells = new Set(
+            galleryData.items.flatMap((galleryItem, index) =>
+              index === selectedGalleryItemIndex || galleryItem.placed === false ? [] : normalizeGalleryCells(galleryItem.cells, galleryData.gridRows),
+            ),
+          );
+
+          if (placementCells.some((cell) => blockedCells.has(cell))) {
+            setStatus("이미 다른 사진이 배치된 영역입니다.", "error");
+            return;
+          }
+
+          item.cells = placementCells;
+          item.placed = true;
+        }
+      }
+      if (action === "clear-gallery-placement") {
+        const item = galleryData.items[itemIndex];
+        if (item) {
+          item.cells = [];
+          item.placed = false;
+          selectedGalleryItemIndex = itemIndex;
+        }
+      }
+      if (action === "remove-gallery-item") {
+        galleryData.items.splice(itemIndex, 1);
+        selectedGalleryItemIndex = Math.max(0, Math.min(selectedGalleryItemIndex, galleryData.items.length - 1));
+      }
+      if (action === "move-gallery-item-up") {
+        swap(galleryData.items, itemIndex, itemIndex - 1);
+        selectedGalleryItemIndex = Math.max(0, itemIndex - 1);
+      }
+      if (action === "move-gallery-item-down") {
+        swap(galleryData.items, itemIndex, itemIndex + 1);
+        selectedGalleryItemIndex = Math.min(galleryData.items.length - 1, itemIndex + 1);
+      }
+
+      renderGalleryEditor();
       setStatus("");
     };
 
@@ -1953,6 +2324,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           await loadHistoryEditor();
         }
 
+        if (actionEl.dataset.action === "open-editor" && actionEl.dataset.editor === "gallery") {
+          await loadGalleryEditor();
+        }
+
         if (actionEl.dataset.action === "open-editor" && actionEl.dataset.editor === "sponsors") {
           await loadSponsorsEditor();
         }
@@ -2015,6 +2390,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
               ? saveIntroData
             : activeEditor === "history"
               ? saveHistoryData
+            : activeEditor === "gallery"
+              ? saveGalleryData
             : activeEditor === "contact"
               ? saveContactData
               : saveData;
@@ -2050,6 +2427,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
             ? handleIntroAction
           : activeEditor === "history"
             ? handleHistoryAction
+          : activeEditor === "gallery"
+            ? handleGalleryAction
           : activeEditor === "contact"
             ? handleContactAction
             : handleAction;
@@ -2131,6 +2510,22 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           }
 
           renderHistoryEditor();
+          setStatus("이미지를 업로드했습니다. 저장을 눌러 반영하세요.", "success");
+          return;
+        }
+
+        if (activeEditor === "gallery") {
+          readGalleryFromDom();
+          const itemIndex = Number(fileInput.dataset.itemIndex);
+          const path = await uploadFileTo(fileInput.files[0], "gallery", "photos");
+          const item = galleryData.items[itemIndex];
+          if (item) {
+            item.image = path;
+            item.alt = item.title;
+            selectedGalleryItemIndex = itemIndex;
+          }
+
+          renderGalleryEditor();
           setStatus("이미지를 업로드했습니다. 저장을 눌러 반영하세요.", "success");
           return;
         }
@@ -2239,6 +2634,17 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       adminPages.hidden = true;
       adminEditor.hidden = false;
       renderHistoryEditor();
+      setStatus("");
+    };
+
+    const loadGalleryEditor = async () => {
+      setEditorChrome("gallery");
+      galleryData = normalizeGalleryData(await requestJson("/api/gallery"));
+      selectedGalleryItemIndex = 0;
+      loginPanel.hidden = true;
+      adminPages.hidden = true;
+      adminEditor.hidden = false;
+      renderGalleryEditor();
       setStatus("");
     };
 

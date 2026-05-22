@@ -2,6 +2,11 @@
   "title": "Contact Us",
   "subtitle": "",
   "heroImage": "/images/banner.jpg",
+  "serverAdmin": {
+    "role": "Server Admin",
+    "name": "TACHYON Website Admin",
+    "email": "tachyon@example.com"
+  },
   "contacts": [
     {
       "role": "회장",

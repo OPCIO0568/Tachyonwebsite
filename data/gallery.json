@@ -1,0 +1,78 @@
+{
+  "title": "Gallery",
+  "description": "Tachyon activity photos",
+  "gridRows": 7,
+  "items": [
+    {
+      "title": "Photo 1",
+      "image": "/uploads/gallery/photos/1779438871303-db6404156d.jpg",
+      "alt": "Photo 1",
+      "size": 1,
+      "placed": true,
+      "cells": [
+        0
+      ]
+    },
+    {
+      "title": "Photo 2",
+      "image": "/uploads/gallery/photos/1779438874157-1bd4ac1e5d.jpg",
+      "alt": "Photo 2",
+      "size": 4,
+      "placed": true,
+      "cells": [
+        1,
+        2,
+        4,
+        5
+      ]
+    },
+    {
+      "title": "Photo 3",
+      "image": "/uploads/gallery/photos/1779438878105-02bb8870f6.jpg",
+      "alt": "Photo 3",
+      "size": 1,
+      "placed": true,
+      "cells": [
+        3
+      ]
+    },
+    {
+      "title": "Photo 4",
+      "image": "/uploads/gallery/photos/1779438881771-b96c5f98c1.jpg",
+      "alt": "Photo 4",
+      "size": 6,
+      "placed": true,
+      "cells": [
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ]
+    },
+    {
+      "title": "Photo 5",
+      "image": "/uploads/gallery/photos/1779438885861-a4bc70b868.jpg",
+      "alt": "Photo 5",
+      "size": 1,
+      "placed": true,
+      "cells": [
+        17
+      ]
+    },
+    {
+      "title": "Photo 6",
+      "image": "/uploads/gallery/photos/1779438892796-89e9d42bb8.jpg",
+      "alt": "Photo 6",
+      "size": 4,
+      "placed": true,
+      "cells": [
+        12,
+        13,
+        15,
+        16
+      ]
+    }
+  ]
+}

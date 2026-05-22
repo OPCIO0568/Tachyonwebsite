@@ -1,0 +1,80 @@
+<!DOCTYPE html><html lang="ko"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Tachyon을 후원하는 기업 및 기관"><meta name="robots" content="index, follow"><link rel="canonical" href="https://tachyon.cbnu.ac.kr/sponsors/"><link rel="icon" type="image/svg+xml" href="/images/tachyon-logo-link.png"><meta property="og:site_name" content="Tachyon"><meta property="og:type" content="website"><meta property="og:title" content="스폰서 | Tachyon"><meta property="og:description" content="Tachyon을 후원하는 기업 및 기관"><meta property="og:url" content="https://tachyon.cbnu.ac.kr/sponsors/"><meta property="og:image" content="https://tachyon.cbnu.ac.kr/images/tachyon-logo-link.png"><title>스폰서 | Tachyon</title><link rel="stylesheet" href="/_astro/admin.Cgelo6nI.css"></head> <body> <header class="site-header"> <div class="container header-inner"> <a class="brand" href="/"> <img class="brand-logo" src="/images/tachyon-logo2.png" alt="Tachyon logo"> <span>Tachyon</span> </a> <div class="header-actions"> <nav class="nav-links"> <a href="/">Home</a> <a href="/intro">About US</a> <a href="/history">Our Cars</a> <a href="/members">Members</a> <a href="/gallery">Gallery</a> <a href="/sponsors">Sponsors</a> <a href="/contact">Contact US</a>  </nav> </div> </div> </header> <main>  <section class="section"> <div class="container" id="sponsors-app"> <h1 class="section-title">Sponsors</h1> <p>스폰서 정보를 불러오는 중입니다.</p> </div> </section> <script>(function(){const fallbackSponsorsData = {"title":"Sponsors","description":"저희 타키온 차량 제작과 대회 참가를 지원해 주시는 기업 및 기관입니다.","heroImage":"/images/sponsors/스폰서 뒷판.jpg","items":[{"name":"ansys","url":"https://ansys.com","logo":"/images/sponsors/Ansys_logo_(2019).svg.png"},{"name":"keyang","url":"","logo":"/images/sponsors/keyang.png"},{"name":"bassard","url":"","logo":"/images/sponsors/BOSSARD_Logo_Claim_RGB.jpg"},{"name":"플러스테크","url":"","logo":""},{"name":"hexagon","url":"","logo":"/images/sponsors/Hexagon-MI-Seasonal-Greeting-2018-04.png"},{"name":"newel 용접","url":"","logo":"/images/sponsors/nswel.png"},{"name":"충북대학교 공학교육혁신센터","url":"","logo":""},{"name":"coss 미래자동차 사업단","url":"","logo":""},{"name":"충북 pro메이커센터","url":"","logo":""},{"name":"충북테크노파크","url":"","logo":""},{"name":"대주베어링","url":"","logo":""},{"name":"고창테크","url":"","logo":""},{"name":"만년볼트","url":"","logo":""},{"name":"청우정공","url":"","logo":""},{"name":"misumi","url":"","logo":"/images/sponsors/MiSUMi-logo@4x.png"},{"name":"monster energy","url":"","logo":""},{"name":"off-on factory - race garage","url":"","logo":""},{"name":"motografix","url":"","logo":""},{"name":"woosuk (테련형)","url":"","logo":"/images/sponsors/woosuck.png"},{"name":"파인드몰드","url":"","logo":""},{"name":"luck#","url":"","logo":""}]};
+
+    const app = document.getElementById("sponsors-app");
+
+    const escapeHtml = (value) =>
+      String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+    const normalizeSponsors = (data) => ({
+      title: data?.title || "Sponsors",
+      description: data?.description || "",
+      heroImage: data?.heroImage || "",
+      items: Array.isArray(data?.items) ? data.items : [],
+    });
+
+    const sponsorCard = (sponsor) => {
+      const hasLogo = Boolean(sponsor.logo);
+      const className = hasLogo ? "logo-card has-image" : "logo-card no-image";
+      const href = sponsor.url || "#";
+      const image = hasLogo
+        ? `<img src="${escapeHtml(sponsor.logo)}" alt="${escapeHtml(sponsor.name)}">`
+        : "";
+
+      return `
+        <a class="${className}" href="${escapeHtml(href)}">
+          ${image}
+          <span class="logo-name">${escapeHtml(sponsor.name)}</span>
+        </a>
+      `;
+    };
+
+    const render = (data) => {
+      const sponsors = normalizeSponsors(data);
+      const hero = sponsors.heroImage
+        ? `
+          <div class="sponsors-hero">
+            <img src="${escapeHtml(sponsors.heroImage)}" alt="Sponsors">
+          </div>
+        `
+        : "";
+
+      app.innerHTML = `
+        <h1 class="section-title">${escapeHtml(sponsors.title)}</h1>
+        <p>${escapeHtml(sponsors.description)}</p>
+        ${hero}
+        <div class="logo-grid">${sponsors.items.map(sponsorCard).join("")}</div>
+      `;
+    };
+
+    const loadSponsors = async () => {
+      try {
+        const response = await fetch("/api/sponsors", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("Failed to load sponsors");
+        }
+        return await response.json();
+      } catch {
+        return fallbackSponsorsData;
+      }
+    };
+
+    loadSponsors()
+      .then(render)
+      .catch(() => {
+        app.innerHTML = `
+          <h1 class="section-title">Sponsors</h1>
+          <p>스폰서 정보를 표시하지 못했습니다. 데이터 형식을 확인해주세요.</p>
+        `;
+      });
+  })();</script>  </main> <footer class="site-footer"> <div class="container footer-inner"> <span>ⓒ 2026 Tachyon</span> <div class="footer-social"> <a href="https://www.instagram.com/cbnu_tachyon/"> <svg viewBox="0 0 24 24" aria-hidden="true"> <path d="M7.5 2C4.462 2 2 4.462 2 7.5v9C2 19.538 4.462 22 7.5 22h9c3.038 0 5.5-2.462 5.5-5.5v-9C22 4.462 19.538 2 16.5 2h-9zm0 2h9C18.43 4 20 5.57 20 7.5v9c0 1.93-1.57 3.5-3.5 3.5h-9C5.57 20 4 18.43 4 16.5v-9C4 5.57 5.57 4 7.5 4zm9.25 2a1.25 1.25 0 100 2.5 1.25 1.25 0 000-2.5zM12 7a5 5 0 100 10 5 5 0 000-10zm0 2a3 3 0 110 6 3 3 0 010-6z"></path> </svg>
+Instagram
+</a> <a href="https://cafe.naver.com/tachyonformula/"> <svg viewBox="0 0 24 24" aria-hidden="true"> <path d="M2 3.6h5.2l4.6 6.6V3.6H22v16.8h-5.2l-4.6-6.6v6.6H2z"></path> </svg>
+Naver Cafe
+</a> <a href="http://www.youtube.com/@CBNUTACHYON/"> <svg viewBox="0 0 24 24" aria-hidden="true"> <path d="M21.58 7.19a2.75 2.75 0 00-1.94-1.94C17.76 4.5 12 4.5 12 4.5s-5.76 0-7.64.75a2.75 2.75 0 00-1.94 1.94A28.45 28.45 0 002 12a28.45 28.45 0 00.42 4.81 2.75 2.75 0 001.94 1.94C6.24 19.5 12 19.5 12 19.5s5.76 0 7.64-.75a2.75 2.75 0 001.94-1.94A28.45 28.45 0 0022 12a28.45 28.45 0 00-.42-4.81zM10 15.27V8.73L15.5 12 10 15.27z"></path> </svg>
+YouTube
+</a> </div> </div> </footer> </body></html>

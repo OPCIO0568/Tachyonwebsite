@@ -1,0 +1,84 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="About Tachyon and the competitions we enter"><meta name="robots" content="index, follow"><link rel="canonical" href="https://tachyon.cbnu.ac.kr/en/intro/"><link rel="icon" type="image/svg+xml" href="/images/tachyon-logo-link.png"><meta property="og:site_name" content="Tachyon"><meta property="og:type" content="website"><meta property="og:title" content="About Us | Tachyon"><meta property="og:description" content="About Tachyon and the competitions we enter"><meta property="og:url" content="https://tachyon.cbnu.ac.kr/en/intro/"><meta property="og:image" content="https://tachyon.cbnu.ac.kr/images/tachyon-logo-link.png"><title>About Us | Tachyon</title><link rel="stylesheet" href="/_astro/admin.Cgelo6nI.css"></head> <body> <header class="site-header"> <div class="container header-inner"> <a class="brand" href="/"> <img class="brand-logo" src="/images/tachyon-logo2.png" alt="Tachyon logo"> <span>Tachyon</span> </a> <div class="header-actions"> <nav class="nav-links"> <a href="/en">Home</a> <a href="/en/intro">About US</a> <a href="/history">Our Cars</a> <a href="/members">Members</a> <a href="/gallery">Gallery</a> <a href="/sponsors">Sponsors</a> <a href="/contact">Contact US</a> <a class="lang-toggle" href="/intro" aria-label="Switch language"> <svg viewBox="0 0 24 24" aria-hidden="true"> <path d="M12 2a10 10 0 100 20 10 10 0 000-20zm7.74 9h-3.12a15.4 15.4 0 00-1.3-5.01A8.02 8.02 0 0119.74 11zM12 4.1c1.1 1.45 1.88 3.25 2.25 5.2h-4.5c.37-1.95 1.15-3.75 2.25-5.2zM4.26 13h3.12c.26 1.74.8 3.39 1.58 4.87A8.03 8.03 0 014.26 13zm3.12-2H4.26a8.03 8.03 0 014.7-4.87c-.78 1.48-1.32 3.13-1.58 4.87zm2.37 2h4.5c-.37 1.95-1.15 3.75-2.25 5.2-1.1-1.45-1.88-3.25-2.25-5.2zm7.87 0h3.12a8.02 8.02 0 01-4.7 4.87c.78-1.48 1.32-3.13 1.58-4.87zm0-2c-.26-1.74-.8-3.39-1.58-4.87A8.02 8.02 0 0119.74 11h-3.12z"></path> </svg> <span>KR</span> </a> </nav> </div> </div> </header> <main>  <div id="intro-app"> <section class="section"> <div class="container"> <h1 class="section-title">About Us</h1> <p>Loading about information.</p> </div> </section> </div> <script>(function(){const fallbackIntroData = {"title":"About Us","description":"About Tachyon and the competitions we enter","sections":[{"heading":"About Us","paragraphs":["Tachyon is the student formula team at Chungbuk National University. We design, build, and test our own open-wheel race car, and we run the entire project as a team. Turning classroom theory into a real vehicle is what defines our work."]},{"heading":"What We Do","paragraphs":["We develop a car that meets Formula SAE Korea and Formula Student regulations. Team members take ownership across structures, powertrain, aero, chassis, electronics, and operations to gain experience close to real industry workflows.","Beyond manufacturing, we improve the car through testing, data-driven decisions, and continuous iteration of design and performance."]},{"heading":"Competition","paragraphs":["Formula SAE Korea is an engineering design competition for university teams. Static events cover design review, cost, and business presentation, while dynamic events include acceleration, skidpad, autocross, and endurance.","Every car must pass technical inspection and safety tests before competition. Preparation, teamwork, and execution directly impact results on race day.","https://www.ksae.org/jajak/"]}],"organization":{"title":"Organization","image":"/images/organization.png","alt":"Team organization chart"}};
+
+    const app = document.getElementById("intro-app");
+
+    const escapeHtml = (value) =>
+      String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+    const normalizeIntro = (data) => ({
+      title: data?.title || "About Us",
+      description: data?.description || "",
+      sections: Array.isArray(data?.sections) ? data.sections : [],
+      organization: {
+        title: data?.organization?.title || "Organization",
+        image: data?.organization?.image || "",
+        alt: data?.organization?.alt || "Team organization chart",
+      },
+    });
+
+    const paragraphHtml = (text) => {
+      const value = String(text || "").trim();
+      if (/^https?:\/\//.test(value)) {
+        return `<p><a href="${escapeHtml(value)}">${escapeHtml(value)}</a></p>`;
+      }
+      return `<p>${escapeHtml(value)}</p>`;
+    };
+
+    const sectionHtml = (section, index) => {
+      const titleTag = index === 0 ? "h1" : "h2";
+      return `
+        <section class="section">
+          <div class="container">
+            <${titleTag} class="section-title">${escapeHtml(section.heading)}</${titleTag}>
+            ${(section.paragraphs || []).map(paragraphHtml).join("")}
+          </div>
+        </section>
+      `;
+    };
+
+    const render = (data) => {
+      const intro = normalizeIntro(data);
+      document.title = intro.title;
+      document.querySelector('meta[name="description"]')?.setAttribute("content", intro.description);
+
+      const organization = intro.organization.image
+        ? `
+          <section class="section">
+            <div class="container">
+              <h2 class="section-title">${escapeHtml(intro.organization.title)}</h2>
+              <div class="org-chart">
+                <img src="${escapeHtml(intro.organization.image)}" alt="${escapeHtml(intro.organization.alt)}">
+              </div>
+            </div>
+          </section>
+        `
+        : "";
+
+      app.innerHTML = `${intro.sections.map(sectionHtml).join("")}${organization}`;
+    };
+
+    const loadIntro = async () => {
+      try {
+        const response = await fetch("/api/intro-en", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("Failed to load intro");
+        }
+        return await response.json();
+      } catch {
+        return fallbackIntroData;
+      }
+    };
+
+    loadIntro().then(render).catch(() => render(fallbackIntroData));
+  })();</script>  </main> <footer class="site-footer"> <div class="container footer-inner"> <span>ⓒ 2026 Tachyon</span> <div class="footer-social"> <a href="https://www.instagram.com/cbnu_tachyon/"> <svg viewBox="0 0 24 24" aria-hidden="true"> <path d="M7.5 2C4.462 2 2 4.462 2 7.5v9C2 19.538 4.462 22 7.5 22h9c3.038 0 5.5-2.462 5.5-5.5v-9C22 4.462 19.538 2 16.5 2h-9zm0 2h9C18.43 4 20 5.57 20 7.5v9c0 1.93-1.57 3.5-3.5 3.5h-9C5.57 20 4 18.43 4 16.5v-9C4 5.57 5.57 4 7.5 4zm9.25 2a1.25 1.25 0 100 2.5 1.25 1.25 0 000-2.5zM12 7a5 5 0 100 10 5 5 0 000-10zm0 2a3 3 0 110 6 3 3 0 010-6z"></path> </svg>
+Instagram
+</a> <a href="https://cafe.naver.com/tachyonformula/"> <svg viewBox="0 0 24 24" aria-hidden="true"> <path d="M2 3.6h5.2l4.6 6.6V3.6H22v16.8h-5.2l-4.6-6.6v6.6H2z"></path> </svg>
+Naver Cafe
+</a> <a href="http://www.youtube.com/@CBNUTACHYON/"> <svg viewBox="0 0 24 24" aria-hidden="true"> <path d="M21.58 7.19a2.75 2.75 0 00-1.94-1.94C17.76 4.5 12 4.5 12 4.5s-5.76 0-7.64.75a2.75 2.75 0 00-1.94 1.94A28.45 28.45 0 002 12a28.45 28.45 0 00.42 4.81 2.75 2.75 0 001.94 1.94C6.24 19.5 12 19.5 12 19.5s5.76 0 7.64-.75a2.75 2.75 0 001.94-1.94A28.45 28.45 0 0022 12a28.45 28.45 0 00-.42-4.81zM10 15.27V8.73L15.5 12 10 15.27z"></path> </svg>
+YouTube
+</a> </div> </div> </footer> </body></html>

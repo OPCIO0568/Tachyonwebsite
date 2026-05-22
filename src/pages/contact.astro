@@ -26,6 +26,11 @@ import fallbackContactData from "../../data/contact.json";
       title: data?.title || "Contact Us",
       subtitle: data?.subtitle || "",
       heroImage: data?.heroImage || "",
+      serverAdmin: {
+        role: data?.serverAdmin?.role || "Server Admin",
+        name: data?.serverAdmin?.name || "",
+        email: data?.serverAdmin?.email || "",
+      },
       contacts: Array.isArray(data?.contacts) ? data.contacts : [],
       socials: Array.isArray(data?.socials) ? data.socials : [],
     });
@@ -55,6 +60,20 @@ import fallbackContactData from "../../data/contact.json";
       </a>
     `;
 
+    const serverAdminBlock = (admin) => {
+      if (!admin.name && !admin.email) {
+        return "";
+      }
+
+      return `
+        <div class="contact-server-admin">
+          <span>${escapeHtml(admin.role || "Server Admin")}</span>
+          ${admin.name ? `<span>${escapeHtml(admin.name)}</span>` : ""}
+          ${admin.email ? `<a href="mailto:${escapeHtml(admin.email)}">${escapeHtml(admin.email)}</a>` : ""}
+        </div>
+      `;
+    };
+
     const render = (data) => {
       const contact = normalizeContact(data);
       const subtitle = contact.subtitle ? `<p class="section-subtitle">${escapeHtml(contact.subtitle)}</p>` : "";
@@ -72,6 +91,7 @@ import fallbackContactData from "../../data/contact.json";
         ${hero}
         <div class="contact-info-grid">${contact.contacts.map(contactCard).join("")}</div>
         <div class="contact-social-grid">${contact.socials.map(socialCard).join("")}</div>
+        ${serverAdminBlock(contact.serverAdmin)}
       `;
     };
 
