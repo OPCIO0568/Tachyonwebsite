@@ -1,79 +1,24 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import fallbackIntroData from "../../../data/intro-en.json";
+import { renderIntro } from "../../utils/publicContent.js";
 ---
 
 <BaseLayout title={fallbackIntroData.title} description={fallbackIntroData.description}>
   <div id="intro-app">
-    <section class="section">
-      <div class="container">
-        <h1 class="section-title">About Us</h1>
-        <p>Loading about information.</p>
-      </div>
-    </section>
+    <Fragment set:html={renderIntro(fallbackIntroData)} />
   </div>
 
-  <script define:vars={{ fallbackIntroData }}>
+  <script>
+    import { normalizeIntro, renderIntro } from "../../utils/publicContent.js";
+
     const app = document.getElementById("intro-app");
-
-    const escapeHtml = (value) =>
-      String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-
-    const normalizeIntro = (data) => ({
-      title: data?.title || "About Us",
-      description: data?.description || "",
-      sections: Array.isArray(data?.sections) ? data.sections : [],
-      organization: {
-        title: data?.organization?.title || "Organization",
-        image: data?.organization?.image || "",
-        alt: data?.organization?.alt || "Team organization chart",
-      },
-    });
-
-    const paragraphHtml = (text) => {
-      const value = String(text || "").trim();
-      if (/^https?:\/\//.test(value)) {
-        return `<p><a href="${escapeHtml(value)}">${escapeHtml(value)}</a></p>`;
-      }
-      return `<p>${escapeHtml(value)}</p>`;
-    };
-
-    const sectionHtml = (section, index) => {
-      const titleTag = index === 0 ? "h1" : "h2";
-      return `
-        <section class="section">
-          <div class="container">
-            <${titleTag} class="section-title">${escapeHtml(section.heading)}</${titleTag}>
-            ${(section.paragraphs || []).map(paragraphHtml).join("")}
-          </div>
-        </section>
-      `;
-    };
 
     const render = (data) => {
       const intro = normalizeIntro(data);
       document.title = intro.title;
       document.querySelector('meta[name="description"]')?.setAttribute("content", intro.description);
-
-      const organization = intro.organization.image
-        ? `
-          <section class="section">
-            <div class="container">
-              <h2 class="section-title">${escapeHtml(intro.organization.title)}</h2>
-              <div class="org-chart">
-                <img src="${escapeHtml(intro.organization.image)}" alt="${escapeHtml(intro.organization.alt)}">
-              </div>
-            </div>
-          </section>
-        `
-        : "";
-
-      app.innerHTML = `${intro.sections.map(sectionHtml).join("")}${organization}`;
+      app.innerHTML = renderIntro(data);
     };
 
     const loadIntro = async () => {
@@ -84,10 +29,14 @@ import fallbackIntroData from "../../../data/intro-en.json";
         }
         return await response.json();
       } catch {
-        return fallbackIntroData;
+        return null;
       }
     };
 
-    loadIntro().then(render).catch(() => render(fallbackIntroData));
+    loadIntro().then((data) => {
+      if (data) {
+        render(data);
+      }
+    });
   </script>
 </BaseLayout>

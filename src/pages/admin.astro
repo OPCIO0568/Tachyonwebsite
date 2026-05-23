@@ -50,22 +50,6 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           </div>
         </form>
 
-        <div class="admin-subpanel admin-server-panel">
-          <div class="admin-subpanel-header">
-            <h3>서버 관리</h3>
-          </div>
-          <p class="admin-server-note">
-            서버에서 실행되는 작업입니다. GitHub pull 전에 백업을 먼저 실행하는 것을 권장합니다.
-          </p>
-          <div class="admin-server-actions">
-            <button class="admin-button" type="button" data-action="server-task" data-server-task="backup">백업</button>
-            <button class="admin-button" type="button" data-action="server-task" data-server-task="pull">GitHub Pull</button>
-            <button class="admin-button" type="button" data-action="server-task" data-server-task="install-build">npm install + build</button>
-            <button class="admin-button admin-button-primary" type="button" data-action="server-task" data-server-task="restart">Restart</button>
-          </div>
-          <pre id="admin-server-output" class="admin-server-output" aria-live="polite"></pre>
-        </div>
-
         <div class="admin-subpanel admin-visit-panel">
           <div class="admin-subpanel-header">
             <h3>조회수 통계</h3>
@@ -105,7 +89,6 @@ import BaseLayout from "../layouts/BaseLayout.astro";
     const adminVisitSummary = document.getElementById("admin-visit-summary");
     const adminVisitPageSelect = document.getElementById("admin-visit-page-select");
     const adminVisitChart = document.getElementById("admin-visit-chart");
-    const adminServerOutput = document.getElementById("admin-server-output");
     const adminPageGrid = document.getElementById("admin-page-grid");
     const adminPasswordForm = document.getElementById("admin-password-form");
     const currentPasswordInput = document.getElementById("current-password");
@@ -160,74 +143,6 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         throw new Error(data.error || "요청을 처리하지 못했습니다.");
       }
       return data;
-    };
-
-    const serverTaskLabels = {
-      backup: "백업",
-      pull: "GitHub Pull",
-      "install-build": "npm install + build",
-      restart: "Restart",
-    };
-
-    const serverTaskConfirmMessages = {
-      pull: "GitHub pull을 실행할까요? 서버의 로컬 변경사항이 있으면 실패할 수 있습니다.",
-      "install-build": "npm install과 build를 실행할까요? 완료까지 시간이 걸릴 수 있습니다.",
-      restart: "서버를 재시작할까요? systemd로 실행 중이어야 자동으로 다시 켜집니다.",
-    };
-
-    const formatServerTaskOutput = (task, data = {}) => {
-      const lines = [`작업: ${serverTaskLabels[task] || task}`];
-      if (data.message) {
-        lines.push(data.message);
-      }
-      if (data.path) {
-        lines.push(`백업 위치: ${data.path}`);
-      }
-      if (Array.isArray(data.copied) && data.copied.length) {
-        lines.push(`백업 대상: ${data.copied.join(", ")}`);
-      }
-      if (data.stdout) {
-        lines.push("", "[stdout]", data.stdout.trim());
-      }
-      if (data.stderr) {
-        lines.push("", "[stderr]", data.stderr.trim());
-      }
-      return lines.join("\n");
-    };
-
-    const runServerTask = async (task) => {
-      const confirmMessage = serverTaskConfirmMessages[task];
-      if (confirmMessage && !window.confirm(confirmMessage)) {
-        return;
-      }
-
-      const buttons = [...adminPages.querySelectorAll('[data-action="server-task"]')];
-      buttons.forEach((button) => {
-        button.disabled = true;
-      });
-      adminServerOutput.textContent = `${serverTaskLabels[task] || task} 실행 중...`;
-      setStatus("");
-
-      try {
-        const response = await fetch("/api/admin/server-task", {
-          method: "POST",
-          credentials: "same-origin",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ task }),
-        });
-        const data = await response.json().catch(() => ({}));
-        adminServerOutput.textContent = formatServerTaskOutput(task, data);
-        if (!response.ok) {
-          throw new Error(data.error || "서버 작업에 실패했습니다.");
-        }
-        setStatus(`${serverTaskLabels[task] || task} 완료`, "success");
-      } catch (error) {
-        setStatus(error.message, "error");
-      } finally {
-        buttons.forEach((button) => {
-          button.disabled = false;
-        });
-      }
     };
 
     const normalizeMember = (member = {}) => ({
@@ -438,6 +353,43 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       return [1, 2, 4, 6].includes(value) ? value : 1;
     };
 
+    const isVideoPath = (path) => /\.(mp4|webm|mov|m4v)(\?.*)?$/i.test(String(path || ""));
+
+    const youtubeIdFromUrl = (value) => {
+      const source = String(value || "").trim();
+      if (!source) {
+        return "";
+      }
+
+      try {
+        const url = new URL(source);
+        const hostname = url.hostname.replace(/^www\./, "");
+        if (hostname === "youtu.be") {
+          return url.pathname.split("/").filter(Boolean)[0] || "";
+        }
+        if (hostname === "youtube.com" || hostname === "m.youtube.com") {
+          const directId = url.searchParams.get("v");
+          if (directId) {
+            return directId;
+          }
+          const parts = url.pathname.split("/").filter(Boolean);
+          if ((parts[0] === "embed" || parts[0] === "shorts") && parts[1]) {
+            return parts[1];
+          }
+        }
+      } catch {
+        return "";
+      }
+
+      return "";
+    };
+
+    const normalizeGalleryMediaType = (item, size) => {
+      const isYoutube = item.mediaType === "youtube" || Boolean(youtubeIdFromUrl(item.image));
+      const isVideo = item.mediaType === "video" || isVideoPath(item.image);
+      return size === 6 && isYoutube ? "youtube" : isVideo && size === 6 ? "video" : "image";
+    };
+
     const gallerySizeOptions = [
       { value: 1, label: "1" },
       { value: 2, label: "2가로" },
@@ -519,15 +471,19 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       });
     };
 
-    const normalizeGalleryItem = (item = {}, gridRows = 6, index = 0) => ({
-      id: Number(item.id) || index + 1,
-      title: item.title || item.caption || `Photo ${index + 1}`,
-      image: item.image || "",
-      alt: item.alt || item.title || "",
-      size: normalizeGallerySize(item.size || item.blocks),
-      placed: item.placed !== false,
-      cells: item.placed === false ? [] : normalizeGalleryCells(item.cells, gridRows, item.blocks || item.size),
-    });
+    const normalizeGalleryItem = (item = {}, gridRows = 6, index = 0) => {
+      const size = normalizeGallerySize(item.size || item.blocks);
+      return {
+        id: Number(item.id) || index + 1,
+        title: item.title || item.caption || `Photo ${index + 1}`,
+        image: item.image || "",
+        alt: item.alt || item.title || "",
+        mediaType: normalizeGalleryMediaType(item, size),
+        size,
+        placed: item.placed !== false,
+        cells: item.placed === false ? [] : normalizeGalleryCells(item.cells, gridRows, item.blocks || item.size),
+      };
+    };
 
     const moveGalleryItemRows = (item, rowDelta, gridRows, index) => {
       const normalizedItem = normalizeGalleryItem(item, Math.max(1, gridRows), index);
@@ -1477,6 +1433,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 
     const galleryStatusLabel = (item) => (item.placed === false ? "미배치" : "배치됨");
 
+    const galleryMediaLabel = (item) => (item.mediaType === "youtube" ? "YouTube" : item.mediaType === "video" ? "영상" : "사진");
+
     const galleryCellOwner = (cellIndex) =>
       galleryData.items.findIndex((item) => item.placed !== false && normalizeGalleryCells(item.cells, galleryData.gridRows).includes(cellIndex));
 
@@ -1513,6 +1471,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
               <input name="gallery-item-title" value="${escapeHtml(item.title)}" />
               <input name="gallery-image" value="${escapeHtml(item.image)}" />
               <input name="gallery-alt" value="${escapeHtml(item.alt)}" />
+              <input name="gallery-media-type" value="${escapeHtml(item.mediaType || "image")}" />
               <input name="gallery-size" value="${escapeHtml(item.size)}" />
               <input name="gallery-placed" value="${item.placed === false ? "false" : "true"}" />
               <input name="gallery-cells" value="${escapeHtml(galleryCellsValue(item))}" />
@@ -1530,7 +1489,11 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         .map(({ item, index }) => {
           const activeClass = index === selectedGalleryItemIndex ? " is-active" : "";
           const thumbnail = item.image
-            ? `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(galleryItemLabel(item, index))}" loading="lazy" />`
+            ? item.mediaType === "youtube"
+              ? `<span>YouTube</span>`
+              : item.mediaType === "video"
+              ? `<video src="${escapeHtml(item.image)}" muted preload="metadata"></video>`
+              : `<img src="${escapeHtml(item.image)}" alt="${escapeHtml(galleryItemLabel(item, index))}" loading="lazy" />`
             : `<span>${galleryItemNumber(item, index)}</span>`;
           return `
             <button class="admin-gallery-list-item${activeClass}" type="button" data-action="select-gallery-item" data-item-index="${index}">
@@ -1538,7 +1501,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
               <span class="admin-gallery-list-thumb">${thumbnail}</span>
               <span class="admin-gallery-list-meta">
                 <strong>${escapeHtml(galleryItemLabel(item, index))}</strong>
-                <em>${galleryStatusLabel(item)}</em>
+                <em>${galleryStatusLabel(item)} · ${galleryMediaLabel(item)}</em>
               </span>
             </button>
           `;
@@ -1575,17 +1538,19 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       if (!item) {
         return '<p class="admin-empty">선택된 사진이 없습니다.</p>';
       }
+      const allowsVideo = item.size === 6;
+      const uploadAccept = allowsVideo ? "image/*,video/mp4,video/webm,video/quicktime,video/x-m4v" : "image/*";
 
       return `
         <div class="admin-gallery-selected-editor">
-          <p class="admin-gallery-selected-label">선택 사진 #${galleryItemNumber(item, selectedGalleryItemIndex)}</p>
+          <p class="admin-gallery-selected-label">선택 ${galleryMediaLabel(item)} #${galleryItemNumber(item, selectedGalleryItemIndex)}</p>
           <label class="admin-field">
             <span>관리용 제목</span>
             <input name="gallery-editor-title" value="${escapeHtml(item.title)}" placeholder="Photo ${galleryItemNumber(item, selectedGalleryItemIndex)}" />
           </label>
           <label class="admin-field">
-            <span>이미지 경로</span>
-            <input name="gallery-editor-image" value="${escapeHtml(item.image)}" placeholder="/uploads/gallery/photo.webp" />
+            <span>파일 경로</span>
+            <input name="gallery-editor-image" value="${escapeHtml(item.image)}" placeholder="${allowsVideo ? "/uploads/gallery/photo.webp 또는 https://youtu.be/..." : "/uploads/gallery/photo.webp"}" />
           </label>
           <input name="gallery-editor-alt" value="${escapeHtml(item.alt)}" type="hidden" />
           <div class="admin-gallery-size-picker" aria-label="사진 크기 선택">
@@ -1597,7 +1562,8 @@ import BaseLayout from "../layouts/BaseLayout.astro";
               `)
               .join("")}
           </div>
-          <input type="file" accept="image/*" data-action="upload-gallery-image" data-item-index="${selectedGalleryItemIndex}" />
+          <input type="file" accept="${uploadAccept}" data-action="upload-gallery-image" data-item-index="${selectedGalleryItemIndex}" />
+          <p class="admin-empty">${allowsVideo ? "6칸 항목은 이미지, 영상 업로드, YouTube 링크를 사용할 수 있습니다." : "영상과 YouTube 링크는 6칸 항목에서만 사용할 수 있습니다."}</p>
           <div class="admin-row-actions">
             <button class="admin-icon-button" type="button" data-action="clear-gallery-placement" data-item-index="${selectedGalleryItemIndex}">배치 취소</button>
             <button class="admin-icon-button" type="button" data-action="move-gallery-item-up" data-item-index="${selectedGalleryItemIndex}">위</button>
@@ -1928,6 +1894,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         title: itemEl.querySelector('[name="gallery-item-title"]').value.trim() || `Photo ${index + 1}`,
         image: itemEl.querySelector('[name="gallery-image"]').value.trim(),
         alt: itemEl.querySelector('[name="gallery-alt"]').value.trim(),
+        mediaType: itemEl.querySelector('[name="gallery-media-type"]').value.trim() || "image",
         size: normalizeGallerySize(itemEl.querySelector('[name="gallery-size"]').value),
         placed: itemEl.querySelector('[name="gallery-placed"]').value !== "false",
         cells:
@@ -1944,7 +1911,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           `Photo ${galleryItemNumber(selectedItem, selectedGalleryItemIndex)}`;
         selectedItem.image = selectedEditor.querySelector('[name="gallery-editor-image"]').value.trim();
         selectedItem.alt = selectedEditor.querySelector('[name="gallery-editor-alt"]').value.trim();
+        selectedItem.mediaType = normalizeGalleryMediaType(selectedItem, selectedItem.size);
       }
+
+      galleryData.items = galleryData.items.map((item, index) => normalizeGalleryItem(item, galleryData.gridRows, index));
     };
 
     const swap = (array, from, to) => {
@@ -2313,6 +2283,10 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         const item = galleryData.items[itemIndex];
         if (item) {
           item.size = normalizeGallerySize(actionEl.dataset.size);
+          if (item.size !== 6 && (item.mediaType === "video" || item.mediaType === "youtube")) {
+            item.image = "";
+            item.mediaType = "image";
+          }
           selectedGalleryItemIndex = itemIndex;
         }
       }
@@ -2323,6 +2297,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
           title: `Photo ${itemId}`,
           image: "",
           alt: "",
+          mediaType: "image",
           size: 1,
           placed: false,
           cells: [],
@@ -2577,11 +2552,6 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       }
 
       try {
-        if (actionEl.dataset.action === "server-task") {
-          await runServerTask(actionEl.dataset.serverTask);
-          return;
-        }
-
         if (actionEl.dataset.action === "open-editor" && actionEl.dataset.editor === "members") {
           await loadMembersEditor();
         }
@@ -2799,16 +2769,21 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         if (activeEditor === "gallery") {
           readGalleryFromDom();
           const itemIndex = Number(fileInput.dataset.itemIndex);
-          const path = await uploadFileTo(fileInput.files[0], "gallery", "photos");
           const item = galleryData.items[itemIndex];
+          const isVideo = fileInput.files[0].type.startsWith("video/");
+          if (isVideo && item?.size !== 6) {
+            throw new Error("영상은 6칸 항목에서만 업로드할 수 있습니다.");
+          }
+          const path = await uploadFileTo(fileInput.files[0], "gallery", isVideo ? "videos" : "photos");
           if (item) {
             item.image = path;
             item.alt = item.title;
+            item.mediaType = isVideo ? "video" : "image";
             selectedGalleryItemIndex = itemIndex;
           }
 
           renderGalleryEditor();
-          setStatus("이미지를 업로드했습니다. 저장을 눌러 반영하세요.", "success");
+          setStatus(`${isVideo ? "영상을" : "이미지를"} 업로드했습니다. 저장을 눌러 반영하세요.`, "success");
           return;
         }
 

@@ -54,8 +54,13 @@ const fullTitle = title === "Tachyon" ? title : `${title} | Tachyon`;
           <img class="brand-logo" src="/images/tachyon-logo2.png" alt="Tachyon logo" />
           <span>Tachyon</span>
         </a>
+        <button class="nav-toggle" type="button" aria-label="Open menu" aria-expanded="false" aria-controls="site-navigation">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
         <div class="header-actions">
-          <nav class="nav-links">
+          <nav class="nav-links" id="site-navigation">
             <a href={homeHref}>Home</a>
             <a href={introHref}>About US</a>
             <a href="/history">Our Cars</a>
@@ -75,6 +80,40 @@ const fullTitle = title === "Tachyon" ? title : `${title} | Tachyon`;
         </div>
       </div>
     </header>
+
+    <script is:inline>
+      const header = document.querySelector(".site-header");
+      const navToggle = document.querySelector(".nav-toggle");
+      const navLinks = document.querySelector(".nav-links");
+
+      const setMenuOpen = (isOpen) => {
+        header?.toggleAttribute("data-nav-open", isOpen);
+        navToggle?.setAttribute("aria-expanded", String(isOpen));
+        navToggle?.setAttribute("aria-label", isOpen ? "Close menu" : "Open menu");
+      };
+
+      navToggle?.addEventListener("click", () => {
+        setMenuOpen(navToggle.getAttribute("aria-expanded") !== "true");
+      });
+
+      navLinks?.addEventListener("click", (event) => {
+        if (event.target.closest("a")) {
+          setMenuOpen(false);
+        }
+      });
+
+      document.addEventListener("click", (event) => {
+        if (!header?.contains(event.target)) {
+          setMenuOpen(false);
+        }
+      });
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          setMenuOpen(false);
+        }
+      });
+    </script>
 
     <main>
       <slot />

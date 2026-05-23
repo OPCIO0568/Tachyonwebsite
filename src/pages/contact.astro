@@ -1,98 +1,28 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import fallbackContactData from "../../data/contact.json";
+import { renderContact } from "../utils/publicContent.js";
 ---
 
-<BaseLayout title="Contact Us" description="Tachyon 연락처와 소셜 링크">
+<BaseLayout title={fallbackContactData.title} description={fallbackContactData.subtitle || "Tachyon contact information"}>
   <section class="section">
     <div class="container" id="contact-app">
-      <h1 class="section-title">Contact Us</h1>
-      <p>연락처 정보를 불러오는 중입니다.</p>
+      <Fragment set:html={renderContact(fallbackContactData)} />
     </div>
   </section>
 
-  <script define:vars={{ fallbackContactData }}>
+  <script>
+    import { normalizeContact, renderContact } from "../utils/publicContent.js";
+
     const app = document.getElementById("contact-app");
-
-    const escapeHtml = (value) =>
-      String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-
-    const normalizeContact = (data) => ({
-      title: data?.title || "Contact Us",
-      subtitle: data?.subtitle || "",
-      heroImage: data?.heroImage || "",
-      serverAdmin: {
-        role: data?.serverAdmin?.role || "Server Admin",
-        name: data?.serverAdmin?.name || "",
-        email: data?.serverAdmin?.email || "",
-      },
-      contacts: Array.isArray(data?.contacts) ? data.contacts : [],
-      socials: Array.isArray(data?.socials) ? data.socials : [],
-    });
-
-    const contactCard = (contact) => {
-      const phone = contact.phone
-        ? `<p class="contact-info-detail">${escapeHtml(contact.phone)}</p>`
-        : "";
-      const email = contact.email
-        ? `<p class="contact-info-detail"><a href="mailto:${escapeHtml(contact.email)}">${escapeHtml(contact.email)}</a></p>`
-        : "";
-
-      return `
-        <div class="contact-info-card">
-          <h3>${escapeHtml(contact.role)}</h3>
-          <p class="contact-info-name">${escapeHtml(contact.name)}</p>
-          ${phone}
-          ${email}
-        </div>
-      `;
-    };
-
-    const socialCard = (social) => `
-      <a class="contact-social-card" href="${escapeHtml(social.url || "#")}">
-        ${social.image ? `<img src="${escapeHtml(social.image)}" alt="${escapeHtml(social.name)}">` : ""}
-        <span>${escapeHtml(social.name)}</span>
-      </a>
-    `;
-
-    const serverAdminBlock = (admin) => {
-      if (!admin.name && !admin.email) {
-        return "";
-      }
-
-      return `
-        <div class="contact-server-admin">
-          <span>${escapeHtml(admin.role || "Server Admin")}</span>
-          ${admin.name ? `<span>${escapeHtml(admin.name)}</span>` : ""}
-          ${admin.email ? `<a href="mailto:${escapeHtml(admin.email)}">${escapeHtml(admin.email)}</a>` : ""}
-        </div>
-      `;
-    };
 
     const render = (data) => {
       const contact = normalizeContact(data);
-      const subtitle = contact.subtitle ? `<p class="section-subtitle">${escapeHtml(contact.subtitle)}</p>` : "";
-      const hero = contact.heroImage
-        ? `
-          <div class="contact-hero">
-            <img src="${escapeHtml(contact.heroImage)}" alt="Tachyon Team">
-          </div>
-        `
-        : "";
-
-      app.innerHTML = `
-        <h1 class="section-title">${escapeHtml(contact.title)}</h1>
-        ${subtitle}
-        ${hero}
-        <div class="contact-info-grid">${contact.contacts.map(contactCard).join("")}</div>
-        <div class="contact-social-grid">${contact.socials.map(socialCard).join("")}</div>
-        ${serverAdminBlock(contact.serverAdmin)}
-      `;
+      document.title = contact.title;
+      document
+        .querySelector('meta[name="description"]')
+        ?.setAttribute("content", contact.subtitle || "Tachyon contact information");
+      app.innerHTML = renderContact(data);
     };
 
     const loadContact = async () => {
@@ -103,17 +33,14 @@ import fallbackContactData from "../../data/contact.json";
         }
         return await response.json();
       } catch {
-        return fallbackContactData;
+        return null;
       }
     };
 
-    loadContact()
-      .then(render)
-      .catch(() => {
-        app.innerHTML = `
-          <h1 class="section-title">Contact Us</h1>
-          <p>연락처 정보를 표시하지 못했습니다. 데이터 형식을 확인해주세요.</p>
-        `;
-      });
+    loadContact().then((data) => {
+      if (data) {
+        render(data);
+      }
+    });
   </script>
 </BaseLayout>

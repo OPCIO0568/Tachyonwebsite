@@ -1,112 +1,24 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import fallbackHomeData from "../../../data/home-en.json";
+import { renderHome } from "../../utils/publicContent.js";
 ---
 
 <BaseLayout title={fallbackHomeData.title} description={fallbackHomeData.description}>
   <div id="home-app">
-    <section class="hero">
-      <picture>
-        <source srcset="/images/banner-dark.jpg" media="(prefers-color-scheme: dark)">
-        <img src="/images/banner.jpg" alt="Tachyon banner">
-      </picture>
-      <div class="container hero-content">
-        <h1 class="hero-title">TACHYON, Student Formula Team at Chungbuk National University</h1>
-        <p class="hero-lead">
-          We study the structure and operation of race cars and handle the full process
-          from design and fabrication to testing on our own.
-        </p>
-      </div>
-    </section>
+    <Fragment set:html={renderHome(fallbackHomeData)} />
   </div>
 
-  <script define:vars={{ fallbackHomeData }}>
+  <script>
+    import { normalizeHome, renderHome } from "../../utils/publicContent.js";
+
     const app = document.getElementById("home-app");
-
-    const escapeHtml = (value) =>
-      String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-
-    const normalizeHome = (data) => ({
-      title: data?.title || "Tachyon",
-      description: data?.description || "",
-      hero: {
-        lightImage: data?.hero?.lightImage || "",
-        darkImage: data?.hero?.darkImage || "",
-        alt: data?.hero?.alt || "Tachyon banner",
-        title: data?.hero?.title || "",
-        lead: data?.hero?.lead || "",
-      },
-      cards: Array.isArray(data?.cards) ? data.cards : [],
-      contact: {
-        title: data?.contact?.title || "With Us",
-        photos: Array.isArray(data?.contact?.photos) ? data.contact.photos : [],
-        links: Array.isArray(data?.contact?.links) ? data.contact.links : [],
-      },
-    });
-
-    const renderCard = (card) => `
-      <a class="card" href="${escapeHtml(card.href || "#")}">
-        <img src="${escapeHtml(card.image)}" alt="${escapeHtml(card.alt || card.label)}">
-        <span class="label">${escapeHtml(card.label)}</span>
-      </a>
-    `;
-
-    const renderContactPhoto = (photo) => `
-      <div class="contact-panel">
-        <a class="contact-photo-link" href="${escapeHtml(photo.href || "#")}">
-          <img class="contact-photo" src="${escapeHtml(photo.image)}" alt="${escapeHtml(photo.alt)}">
-        </a>
-      </div>
-    `;
-
-    const renderContactLink = (link) => `
-      <a class="contact-btn" href="${escapeHtml(link.href || "#")}">${escapeHtml(link.label)}</a>
-    `;
 
     const render = (data) => {
       const home = normalizeHome(data);
       document.title = home.title;
       document.querySelector('meta[name="description"]')?.setAttribute("content", home.description);
-      const darkSource = home.hero.darkImage
-        ? `<source srcset="${escapeHtml(home.hero.darkImage)}" media="(prefers-color-scheme: dark)">`
-        : "";
-
-      app.innerHTML = `
-        <section class="hero">
-          <picture>
-            ${darkSource}
-            <img src="${escapeHtml(home.hero.lightImage)}" alt="${escapeHtml(home.hero.alt)}">
-          </picture>
-          <div class="container hero-content">
-            <h1 class="hero-title">${escapeHtml(home.hero.title)}</h1>
-            <p class="hero-lead">${escapeHtml(home.hero.lead)}</p>
-          </div>
-        </section>
-
-        <section class="section">
-          <div class="container">
-            <h2 class="section-title"></h2>
-            <div class="card-grid">${home.cards.map(renderCard).join("")}</div>
-          </div>
-        </section>
-
-        <section class="section" id="contact">
-          <div class="container">
-            <h2 class="section-title">${escapeHtml(home.contact.title)}</h2>
-            <div class="contact-grid">
-              ${home.contact.photos.map(renderContactPhoto).join("")}
-              <div class="contact-panel contact-buttons">
-                ${home.contact.links.map(renderContactLink).join("")}
-              </div>
-            </div>
-          </div>
-        </section>
-      `;
+      app.innerHTML = renderHome(data);
     };
 
     const loadHome = async () => {
@@ -117,10 +29,14 @@ import fallbackHomeData from "../../../data/home-en.json";
         }
         return await response.json();
       } catch {
-        return fallbackHomeData;
+        return null;
       }
     };
 
-    loadHome().then(render).catch(() => render(fallbackHomeData));
+    loadHome().then((data) => {
+      if (data) {
+        render(data);
+      }
+    });
   </script>
 </BaseLayout>

@@ -3,7 +3,7 @@
   "description": "충북대학교 자작 포뮬러 자동차 동아리",
   "hero": {
     "lightImage": "/images/banner.jpg",
-    "darkImage": "/images/banner-dark.jpg",
+    "darkImage": "/images/banner.jpg",
     "alt": "Tachyon Banner",
     "title": "충북대학교 자작 자동차 동아리, TACHYON",
     "lead": "차량의 구조와 작동 원리를 직접 이해하고, 설계부터 제작, 테스트 주행까지 전 과정을 직접 대학생들이 하는 것을 목표로 활동하고 있습니다."

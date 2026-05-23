@@ -204,7 +204,7 @@ npm run serve
 
 처음 서버를 실행할 때 `data/auth.json`이 없으면 `TACHYON_ADMIN_PASSWORD` 값이 초기 비밀번호로 사용됩니다.
 
-`TACHYON_ADMIN_PASSWORD`도 설정하지 않으면 개발용 기본값인 `dev-password`가 사용됩니다. 운영 서버에서는 이 상태로 두면 안 되며, 서버를 켜자마자 `/admin`에서 비밀번호를 변경해야 합니다.
+`TACHYON_ADMIN_PASSWORD`도 설정하지 않으면 관리자 로그인이 비활성화됩니다. 운영 서버에서는 반드시 초기 비밀번호를 환경변수로 설정한 뒤 서버를 시작해야 합니다.
 
 관리자 페이지에서 비밀번호를 변경하면 `data/auth.json`에 해시 값으로 저장됩니다. 이 파일이 생긴 뒤에는 `TACHYON_ADMIN_PASSWORD`를 바꿔도 기존 비밀번호가 유지됩니다.
 

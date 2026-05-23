@@ -3,7 +3,7 @@
   "description": "Chungbuk National University student formula team",
   "hero": {
     "lightImage": "/images/banner.jpg",
-    "darkImage": "/images/banner-dark.jpg",
+    "darkImage": "/images/banner.jpg",
     "alt": "Tachyon banner",
     "title": "TACHYON, Student Formula Team at Chungbuk National University",
     "lead": "We study the structure and operation of race cars and handle the full process from design and fabrication to testing on our own."
