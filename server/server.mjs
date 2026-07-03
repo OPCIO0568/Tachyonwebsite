@@ -28,6 +28,7 @@ const galleryFile = path.join(dataDir, "gallery.json");
 const visitsFile = path.join(dataDir, "visits.json");
 const sitePagesFile = path.join(dataDir, "site-pages.json");
 const authFile = path.join(dataDir, "auth.json");
+const publicOrigin = process.env.TACHYON_SITE_ORIGIN || "https://tachyon.cbnu.ac.kr";
 
 const port = Number(process.env.PORT || 4321);
 const host = process.env.HOST || "127.0.0.1";
@@ -39,8 +40,12 @@ const maxUploadSize = 8 * 1024 * 1024;
 const maxVideoUploadSize = 80 * 1024 * 1024;
 const optimizedImageMaxWidth = 1600;
 const optimizedImageQuality = 78;
+const highQualityMemberImagePurposes = new Set(["team-photo", "archive-photo"]);
 const minPasswordLength = 8;
+const maxLoginAttempts = 8;
+const loginWindowMs = 15 * 60 * 1000;
 let visitWriteQueue = Promise.resolve();
+const loginAttempts = new Map();
 
 const mimeTypes = new Map([
   [".html", "text/html; charset=utf-8"],
@@ -229,6 +234,18 @@ const defaultSitePages = [
 
 const ensureDir = (dir) => mkdir(dir, { recursive: true });
 
+const securityHeaders = {
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY",
+  "referrer-policy": "strict-origin-when-cross-origin",
+  "permissions-policy": "camera=(), microphone=(), geolocation=()",
+};
+
+const withSecurityHeaders = (headers = {}) => ({
+  ...securityHeaders,
+  ...headers,
+});
+
 const fileExists = async (filePath) => {
   try {
     await access(filePath);
@@ -239,23 +256,23 @@ const fileExists = async (filePath) => {
 };
 
 const sendJson = (res, statusCode, data) => {
-  res.writeHead(statusCode, {
+  res.writeHead(statusCode, withSecurityHeaders({
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",
-  });
+  }));
   res.end(JSON.stringify(data));
 };
 
 const sendText = (res, statusCode, text) => {
-  res.writeHead(statusCode, {
+  res.writeHead(statusCode, withSecurityHeaders({
     "content-type": "text/plain; charset=utf-8",
     "cache-control": "no-store",
-  });
+  }));
   res.end(text);
 };
 
 const redirect = (res, location) => {
-  res.writeHead(302, { location });
+  res.writeHead(302, withSecurityHeaders({ location }));
   res.end();
 };
 
@@ -320,6 +337,68 @@ const parseCookies = (header = "") =>
   );
 
 const sign = (value) => createHmac("sha256", sessionSecret).update(value).digest("base64url");
+
+const isHttpsRequest = (req) =>
+  Boolean(req.socket.encrypted) || String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim() === "https";
+
+const sessionCookieHeader = (req, value, maxAge) =>
+  `${sessionCookie}=${encodeURIComponent(value)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${maxAge}${isHttpsRequest(req) ? "; Secure" : ""}`;
+
+const requestHost = (req) => String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim();
+
+const isTrustedOrigin = (req) => {
+  const origin = req.headers.origin;
+  if (!origin) {
+    return true;
+  }
+
+  try {
+    const originUrl = new URL(origin);
+    return originUrl.host === requestHost(req) || originUrl.origin === publicOrigin;
+  } catch {
+    return false;
+  }
+};
+
+const requireTrustedOrigin = (req, res) => {
+  if (req.method === "GET" || req.method === "HEAD" || isTrustedOrigin(req)) {
+    return true;
+  }
+
+  sendJson(res, 403, { error: "허용되지 않은 요청입니다." });
+  return false;
+};
+
+const clientIp = (req) => String(req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown").split(",")[0].trim();
+
+const loginAttemptState = (req) => {
+  const ip = clientIp(req);
+  const now = Date.now();
+  const state = loginAttempts.get(ip);
+  if (!state || now - state.firstAt > loginWindowMs) {
+    return { ip, count: 0, firstAt: now };
+  }
+  return { ip, ...state };
+};
+
+const checkLoginRateLimit = (req, res) => {
+  const state = loginAttemptState(req);
+  if (state.count < maxLoginAttempts) {
+    return true;
+  }
+
+  sendJson(res, 429, { error: "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요." });
+  return false;
+};
+
+const recordLoginFailure = (req) => {
+  const state = loginAttemptState(req);
+  loginAttempts.set(state.ip, { count: state.count + 1, firstAt: state.firstAt });
+};
+
+const clearLoginFailures = (req) => {
+  loginAttempts.delete(clientIp(req));
+};
 
 const createSessionToken = () => {
   const payload = Buffer.from(
@@ -955,21 +1034,20 @@ const sanitizeSegment = (value, fallback) => {
   return sanitized || fallback;
 };
 
-const optimizeImage = async (buffer) => {
+const optimizeImage = async (buffer, { highQuality = false } = {}) => {
   const image = sharp(buffer, { animated: false, limitInputPixels: 80_000_000 }).rotate();
   const metadata = await image.metadata();
-  const shouldResize = Number(metadata.width || 0) > optimizedImageMaxWidth;
+  const shouldResize = !highQuality && Number(metadata.width || 0) > optimizedImageMaxWidth;
 
-  return image
+  const pipeline = image
     .resize({
       width: shouldResize ? optimizedImageMaxWidth : undefined,
       withoutEnlargement: true,
-    })
-    .webp({
-      quality: optimizedImageQuality,
-      effort: 5,
-    })
-    .toBuffer();
+    });
+
+  return highQuality
+    ? pipeline.webp({ lossless: true, effort: 6 }).toBuffer()
+    : pipeline.webp({ quality: optimizedImageQuality, effort: 5 }).toBuffer();
 };
 
 const videoExtensions = new Map([
@@ -994,6 +1072,7 @@ const uploadMedia = async (req, res) => {
   const file = form.get("file");
   const category = sanitizeSegment(form.get("category"), "members");
   const bucket = sanitizeSegment(form.get("year") || form.get("bucket"), "general");
+  const purpose = sanitizeSegment(form.get("purpose"), "");
 
   if (!file || typeof file.arrayBuffer !== "function") {
     sendJson(res, 400, { error: "업로드할 파일이 없습니다." });
@@ -1028,7 +1107,9 @@ const uploadMedia = async (req, res) => {
 
   if (isImage) {
     try {
-      outputBuffer = await optimizeImage(buffer);
+      outputBuffer = await optimizeImage(buffer, {
+        highQuality: category === "members" && highQualityMemberImagePurposes.has(purpose),
+      });
     } catch {
       sendJson(res, 400, { error: "이미지를 처리하지 못했습니다. JPG, PNG, WebP, BMP 파일을 사용해주세요." });
       return;
@@ -1175,10 +1256,10 @@ const serveStatic = async (req, res, url) => {
 
       const ext = path.extname(candidate).toLowerCase();
       const cacheControl = ext === ".html" ? "no-cache" : "public, max-age=31536000, immutable";
-      res.writeHead(200, {
+      res.writeHead(200, withSecurityHeaders({
         "content-type": mimeTypes.get(ext) || "application/octet-stream",
         "cache-control": cacheControl,
-      });
+      }));
       if (shouldCountPageView(req, pathname, candidate)) {
         recordPageView(pathname);
       }
@@ -1193,6 +1274,10 @@ const serveStatic = async (req, res, url) => {
 };
 
 const handleApi = async (req, res, url) => {
+  if (url.pathname.startsWith("/api/admin/") && !requireTrustedOrigin(req, res)) {
+    return true;
+  }
+
   if (req.method === "GET" && url.pathname === "/api/home") {
     sendJson(res, 200, await readHome());
     return true;
@@ -1260,18 +1345,24 @@ const handleApi = async (req, res, url) => {
   }
 
   if (req.method === "POST" && url.pathname === "/api/admin/login") {
+    if (!checkLoginRateLimit(req, res)) {
+      return true;
+    }
+
     const body = await readJsonBody(req);
     if (!(await authenticateAdminPassword(body.password || ""))) {
+      recordLoginFailure(req);
       sendJson(res, 401, { error: "비밀번호가 올바르지 않습니다." });
       return true;
     }
 
+    clearLoginFailures(req);
     const token = createSessionToken();
-    res.writeHead(200, {
+    res.writeHead(200, withSecurityHeaders({
       "content-type": "application/json; charset=utf-8",
-      "set-cookie": `${sessionCookie}=${encodeURIComponent(token)}; HttpOnly; SameSite=Lax; Path=/; Max-Age=${60 * 60 * 24 * 7}`,
+      "set-cookie": sessionCookieHeader(req, token, 60 * 60 * 24 * 7),
       "cache-control": "no-store",
-    });
+    }));
     res.end(JSON.stringify({ ok: true }));
     return true;
   }
@@ -1301,11 +1392,11 @@ const handleApi = async (req, res, url) => {
   }
 
   if (req.method === "POST" && url.pathname === "/api/admin/logout") {
-    res.writeHead(200, {
+    res.writeHead(200, withSecurityHeaders({
       "content-type": "application/json; charset=utf-8",
-      "set-cookie": `${sessionCookie}=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0`,
+      "set-cookie": sessionCookieHeader(req, "", 0),
       "cache-control": "no-store",
-    });
+    }));
     res.end(JSON.stringify({ ok: true }));
     return true;
   }

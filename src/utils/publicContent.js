@@ -9,6 +9,23 @@ export const escapeHtml = (value) =>
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 
+const safeHref = (value) => {
+  const href = String(value || "").trim();
+  if (!href) {
+    return "#";
+  }
+  if (href.startsWith("/") || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) {
+    return href;
+  }
+
+  try {
+    const url = new URL(href);
+    return url.protocol === "http:" || url.protocol === "https:" ? href : "#";
+  } catch {
+    return "#";
+  }
+};
+
 const normalizeGridRows = (value) => Math.max(1, Math.min(24, Number(value) || 6));
 
 const blockCells = (value) => {
@@ -151,7 +168,7 @@ export const renderGallery = (data) => {
     <p class="section-subtitle">${escapeHtml(gallery.description)}</p>
     ${
       items.length
-        ? `<div class="gallery-grid" style="grid-template-rows: repeat(${gallery.gridRows}, minmax(110px, 15vw));">${items
+        ? `<div class="gallery-grid" style="--gallery-rows: ${gallery.gridRows};">${items
             .map(
               (item) => `
                 <figure class="gallery-item" style="${galleryItemStyle(item, gallery.gridRows)}">
@@ -214,7 +231,7 @@ export const renderHome = (data) => {
           ${home.cards
             .map(
               (card) => `
-                <a class="card" href="${escapeHtml(card.href || "#")}">
+                <a class="card" href="${escapeHtml(safeHref(card.href))}">
                   <img src="${escapeHtml(card.image)}" alt="${escapeHtml(card.alt || card.label)}">
                   <span class="label">${escapeHtml(card.label)}</span>
                 </a>
@@ -233,7 +250,7 @@ export const renderHome = (data) => {
             .map(
               (photo) => `
                 <div class="contact-panel">
-                  <a class="contact-photo-link" href="${escapeHtml(photo.href || "#")}">
+                  <a class="contact-photo-link" href="${escapeHtml(safeHref(photo.href))}">
                     <img class="contact-photo" src="${escapeHtml(photo.image)}" alt="${escapeHtml(photo.alt)}">
                   </a>
                 </div>
@@ -242,7 +259,7 @@ export const renderHome = (data) => {
             .join("")}
           <div class="contact-panel contact-buttons">
             ${home.contact.links
-              .map((link) => `<a class="contact-btn" href="${escapeHtml(link.href || "#")}">${escapeHtml(link.label)}</a>`)
+              .map((link) => `<a class="contact-btn" href="${escapeHtml(safeHref(link.href))}">${escapeHtml(link.label)}</a>`)
               .join("")}
           </div>
         </div>
@@ -265,7 +282,7 @@ export const normalizeIntro = (data) => ({
 const paragraphHtml = (text) => {
   const value = String(text || "").trim();
   if (/^https?:\/\//.test(value)) {
-    return `<p><a href="${escapeHtml(value)}">${escapeHtml(value)}</a></p>`;
+    return `<p><a href="${escapeHtml(safeHref(value))}">${escapeHtml(value)}</a></p>`;
   }
   return `<p>${escapeHtml(value)}</p>`;
 };
@@ -400,7 +417,7 @@ export const renderSponsors = (data) => {
         .map((sponsor) => {
           const hasLogo = Boolean(sponsor.logo);
           return `
-            <a class="${hasLogo ? "logo-card has-image" : "logo-card no-image"}" href="${escapeHtml(sponsor.url || "#")}">
+            <a class="${hasLogo ? "logo-card has-image" : "logo-card no-image"}" href="${escapeHtml(safeHref(sponsor.url))}">
               ${hasLogo ? `<img src="${escapeHtml(sponsor.logo)}" alt="${escapeHtml(sponsor.name)}">` : ""}
               <span class="logo-name">${escapeHtml(sponsor.name)}</span>
             </a>
@@ -467,7 +484,7 @@ export const renderContact = (data) => {
       ${contact.socials
         .map(
           (social) => `
-            <a class="contact-social-card" href="${escapeHtml(social.url || "#")}">
+            <a class="contact-social-card" href="${escapeHtml(safeHref(social.url))}">
               ${social.image ? `<img src="${escapeHtml(social.image)}" alt="${escapeHtml(social.name)}">` : ""}
               <span>${escapeHtml(social.name)}</span>
             </a>

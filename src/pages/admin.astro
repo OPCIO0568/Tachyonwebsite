@@ -1926,9 +1926,12 @@ import BaseLayout from "../layouts/BaseLayout.astro";
       array[to] = item;
     };
 
-    const uploadFile = async (file, year) => {
+    const uploadFile = async (file, year, purpose = "") => {
       const formData = new FormData();
       formData.append("year", year || "general");
+      if (purpose) {
+        formData.append("purpose", purpose);
+      }
       formData.append("file", file);
 
       const response = await fetch("/api/admin/upload", {
@@ -2808,7 +2811,14 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         readCurrentEditorFromDom();
         const kind = selectedKind();
         const season = currentSeason();
-        const path = await uploadFile(fileInput.files[0], selectedUploadBucket());
+        const action = fileInput.dataset.action;
+        const purpose =
+          action === "upload-team-photo"
+            ? "team-photo"
+            : action === "upload-archive-photo"
+              ? "archive-photo"
+              : "";
+        const path = await uploadFile(fileInput.files[0], selectedUploadBucket(), purpose);
 
         if (fileInput.dataset.action === "upload-team-photo") {
           if (kind === "ob") {
